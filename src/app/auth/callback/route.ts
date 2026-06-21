@@ -2,15 +2,13 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { googleIntegrationScopes } from "@/lib/google/scopes";
+import { getAppOrigin, safeNextPath } from "@/lib/app-url";
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
-  let next = searchParams.get("next") ?? "/";
-
-  if (!next.startsWith("/")) {
-    next = "/";
-  }
+  const appOrigin = getAppOrigin(request);
+  const next = safeNextPath(searchParams.get("next"));
 
   if (code) {
     const supabase = await createClient();
@@ -42,20 +40,9 @@ export async function GET(request: Request) {
         );
       }
 
-      const forwardedHost = request.headers.get("x-forwarded-host");
-      const isLocalEnv = process.env.NODE_ENV === "development";
-
-      if (isLocalEnv) {
-        return NextResponse.redirect(`${origin}${next}`);
-      }
-
-      if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`);
-      }
-
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(`${appOrigin}${next}`);
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth-code`);
+  return NextResponse.redirect(`${appOrigin}/login?error=auth-code`);
 }
