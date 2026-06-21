@@ -2,15 +2,15 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Orange OS",
-    short_name: "Orange OS",
+    name: "JU OS",
+    short_name: "JU OS",
     description: "A private AI-enabled command center for the day.",
     start_url: "/",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#f9fbea",
-    theme_color: "#f9fbea",
+    background_color: "#FBF5EA",
+    theme_color: "#FBF5EA",
     categories: ["productivity", "finance", "business"],
     icons: [
       {

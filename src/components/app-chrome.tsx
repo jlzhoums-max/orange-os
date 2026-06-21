@@ -5,169 +5,127 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bell,
+  BarChart3,
   CalendarDays,
-  ChevronDown,
-  Command,
-  DatabaseZap,
+  ChevronRight,
+  CircleDollarSign,
+  Grid2X2,
   Home,
-  LayoutDashboard,
   ListTodo,
-  LogOut,
   Mail,
-  Menu,
-  Plus,
-  RefreshCcw,
-  Search,
-  Settings,
-  Sparkles,
-  UserCircle,
-  WalletCards,
-  Wrench,
+  MessageCircle,
+  Settings2,
+  SlidersHorizontal,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-type DockItem = {
+type AppSection = "overview" | "email" | "calendar" | "todo" | "realestate" | "ledger" | "assets" | "chengzi" | "profile" | "life" | "tool" | "setting";
+type LegacySection = "Home" | "Mail" | "Tools";
+
+type NavChild = {
   label: string;
+  href: string;
   icon: LucideIcon;
-  active?: boolean;
-  href?: string;
-  action?: "signOut";
-  options?: Array<{ label: string; href?: string; icon: LucideIcon; action?: "signOut" }>;
 };
 
 type AppChromeProps = {
-  active?: "Home" | "Mail" | "Tools";
+  active?: AppSection | LegacySection;
   children: React.ReactNode;
 };
 
-export function AppChrome({ active = "Home", children }: AppChromeProps) {
+const lifeItems: NavChild[] = [
+  { label: "Email", href: "/email", icon: Mail },
+  { label: "Calendar", href: "/calendar", icon: CalendarDays },
+  { label: "To-Do", href: "/todo", icon: ListTodo },
+];
+
+const toolItems: NavChild[] = [
+  { label: "Real Estate", href: "/real-estate", icon: Home },
+  { label: "The Ledger", href: "/ledger", icon: BarChart3 },
+  { label: "Assets", href: "/assets", icon: CircleDollarSign },
+];
+
+const desktopItems: Array<NavChild & { key: AppSection; badge?: string }> = [
+  { key: "overview", label: "Overview", href: "/", icon: Grid2X2 },
+  { key: "email", label: "Email", href: "/email", icon: Mail, badge: "12" },
+  { key: "calendar", label: "Calendar", href: "/calendar", icon: CalendarDays },
+  { key: "todo", label: "To-Do", href: "/todo", icon: ListTodo, badge: "5" },
+  { key: "realestate", label: "Real Estate", href: "/real-estate", icon: Home },
+  { key: "ledger", label: "The Ledger", href: "/ledger", icon: BarChart3 },
+  { key: "assets", label: "Assets", href: "/assets", icon: CircleDollarSign },
+  { key: "chengzi", label: "Cheng Zi", href: "/chengzi", icon: MessageCircle, badge: "AI" },
+];
+
+function normalizeActive(active: AppChromeProps["active"], pathname: string): AppSection {
+  if (active === "Home") return "overview";
+  if (active === "Mail") return "email";
+  if (active === "Tools") return "tool";
+  if (pathname === "/email") return "email";
+  if (pathname === "/calendar") return "calendar";
+  if (pathname === "/todo") return "todo";
+  if (pathname === "/real-estate") return "realestate";
+  if (pathname === "/ledger") return "ledger";
+  if (pathname === "/assets") return "assets";
+  if (pathname === "/") return "overview";
+  if (pathname === "/chengzi") return "chengzi";
+  if (pathname === "/profile") return "profile";
+  if (active === "overview" || active === "life" || active === "tool" || active === "setting" || active === "chengzi" || active === "profile") return active;
+  return "overview";
+}
+
+export function AppChrome({ active, children }: AppChromeProps) {
+  const pathname = usePathname();
+  const current = normalizeActive(active, pathname);
+
   return (
     <div className="os-page">
       <div className="os-shell">
-        <Sidebar active={active} />
-        <div className="min-w-0">
-          <AppTopbar />
-          <main className="os-main">{children}</main>
-        </div>
+        <Sidebar active={current} pathname={pathname} />
+        <main className="os-main">{children}</main>
       </div>
-      <BottomDock active={active} />
+      <BottomDock active={current} pathname={pathname} />
     </div>
   );
 }
 
-export function AppTopbar() {
-  const date = new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  }).format(new Date());
-
+function Sidebar({ active, pathname }: { active: AppSection; pathname: string }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[var(--background)]/88 px-3 py-2 backdrop-blur-xl lg:px-5">
-      <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-3">
-        <button className="text-[var(--accent)] lg:hidden" aria-label="Open menu" type="button">
-          <Menu size={22} />
-        </button>
-
-        <label className="hidden h-10 w-full max-w-sm items-center gap-2 rounded-xl border border-[var(--line)] bg-[rgba(255,253,248,0.78)] px-3 shadow-[0_8px_22px_rgba(110,56,13,0.05)] lg:flex">
-          <Search size={17} className="text-[var(--muted)]" />
-          <input
-            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--muted-soft)]"
-            placeholder="Search anything..."
-            type="search"
-          />
-          <span className="inline-flex items-center gap-1 rounded-md border border-[var(--line)] bg-white/70 px-1.5 py-0.5 font-mono text-[11px] text-[var(--muted)]">
-            <Command size={12} /> K
-          </span>
-        </label>
-
-        <BrandLogo className="h-8 w-8 lg:hidden" />
-
-        <div className="flex items-center gap-2 text-sm text-[var(--foreground)]">
-          <div className="hidden items-center gap-2 md:flex">
-            <CalendarDays size={17} className="text-[var(--muted)]" />
-            <span suppressHydrationWarning>{date}</span>
-          </div>
-          <button
-            className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[rgba(255,253,248,0.78)] text-[var(--foreground)]"
-            aria-label="Notifications"
-            type="button"
-          >
-            <Bell size={17} />
-            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[var(--accent-hot)] ring-2 ring-[var(--surface)]" />
-          </button>
-          <Link
-            className="hidden items-center gap-2 rounded-full border border-[var(--line)] bg-[rgba(255,253,248,0.78)] py-1 pl-1 pr-2.5 md:flex"
-            href="/"
-          >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--secondary-container)] text-xs font-bold text-[var(--secondary)]">
-              J
-            </span>
-            <span className="font-semibold">Justin</span>
-            <ChevronDown size={15} className="text-[var(--muted)]" />
-          </Link>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function Sidebar({ active }: { active: "Home" | "Mail" | "Tools" }) {
-  const pathname = usePathname();
-  const primary = [
-    { label: "Today", href: "/", icon: LayoutDashboard, active: active === "Home" && pathname === "/" },
-    { label: "Calendar", icon: CalendarDays },
-    { label: "Inbox", href: "/email", icon: Mail, active: active === "Mail" || pathname === "/email" },
-    { label: "AI Brief", icon: Sparkles },
-  ];
-  const tools = [
-    { label: "To-do", href: "/todo", icon: ListTodo },
-    { label: "Real Estate", href: "/real-estate", icon: Home },
-    { label: "Ledger", href: "/ledger", icon: WalletCards },
-    { label: "Future Tools", icon: DatabaseZap },
-  ];
-
-  return (
-    <aside className="sticky top-0 hidden h-screen border-r border-[var(--line)] bg-[rgba(255,244,230,0.52)] p-4 backdrop-blur-xl lg:flex lg:flex-col">
-      <Link className="flex items-center gap-3" href="/">
-        <BrandLogo className="h-9 w-9" />
-        <div>
-          <p className="font-bold leading-tight">Orange OS</p>
-          <p className="text-xs text-[var(--muted)]">Daily tools</p>
-        </div>
+    <aside className="sticky top-0 hidden h-screen flex-col border-r border-[var(--line)] bg-white px-4 py-6 lg:flex">
+      <Link className="flex items-center gap-[11px] px-2 pb-[22px] no-underline" href="/">
+        <BrandLogo className="h-[34px] w-[34px]" />
+        <span className="flex flex-col leading-none">
+          <span className="text-[18px] font-extrabold tracking-normal text-[var(--foreground)]">JU OS</span>
+          <span className="mt-[3px] text-[11px] font-semibold text-[#A99B82]">Personal system</span>
+        </span>
       </Link>
 
-      <button className="os-primary-button mt-5 flex h-10 items-center justify-center gap-2 px-3 text-sm font-semibold" type="button">
-        <Plus size={17} />
-        Quick capture
-      </button>
-
-      <nav className="mt-5 grid gap-1" aria-label="Desktop navigation">
-        {primary.map((item) => (
-          <SidebarLink key={item.label} {...item} />
+      <div className="os-label px-2 pb-2 pt-1">Workspace</div>
+      <nav className="flex flex-col gap-[3px]" aria-label="Desktop navigation">
+        {desktopItems.map((item) => (
+          <SidebarLink
+            active={active === item.key || pathname === item.href}
+            badge={item.badge}
+            href={item.href}
+            icon={item.icon}
+            key={item.href}
+            label={item.label}
+          />
         ))}
       </nav>
 
-      <div className="mt-5">
-        <p className="os-label px-3">Tools</p>
-        <nav className="mt-2 grid gap-1" aria-label="Tool navigation">
-          {tools.map((item) => (
-            <SidebarLink key={item.label} {...item} active={Boolean(item.href && pathname === item.href)} />
-          ))}
-        </nav>
-      </div>
-
-      <div className="mt-auto grid gap-2">
-        <SidebarLink label="Settings" icon={Settings} />
-        <button
-          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-[var(--muted)] hover:bg-white/62 hover:text-[var(--accent)]"
-          onClick={signOutUser}
-          type="button"
-        >
-          <LogOut size={18} />
-          Log out
-        </button>
+      <div className="mt-auto flex flex-col gap-2">
+        <SidebarLink href="/profile" icon={SlidersHorizontal} label="Settings" active={active === "profile"} />
+        <div className="flex items-center gap-[11px]">
+          <div className="flex flex-1 items-center gap-[11px] rounded-[14px] bg-[#F8F1E4] p-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#F47E16,#E84B1B)] text-[15px] font-extrabold text-white">
+              J
+            </div>
+            <div className="min-w-0 leading-tight">
+              <div className="truncate text-[13.5px] font-bold text-[var(--foreground)]">Ju</div>
+              <div className="truncate text-[11.5px] text-[#A99B82]">Private workspace</div>
+            </div>
+          </div>
+        </div>
       </div>
     </aside>
   );
@@ -177,225 +135,230 @@ function SidebarLink({
   label,
   icon: Icon,
   href,
-  active = false,
+  active,
+  badge,
 }: {
   label: string;
   icon: LucideIcon;
-  href?: string;
-  active?: boolean;
+  href: string;
+  active: boolean;
+  badge?: string;
 }) {
-  const className = `relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-    active
-      ? "bg-white text-[var(--accent)] shadow-[0_9px_26px_rgba(110,56,13,0.07)]"
-      : "text-[var(--muted)] hover:bg-white/62 hover:text-[var(--accent)]"
-  }`;
-  const content = (
-    <>
-      {active ? <span className="h-2 w-2 rounded-full bg-[var(--accent)]" /> : null}
-      <Icon size={18} />
-      <span>{label}</span>
-    </>
-  );
-
-  if (href) {
-    return (
-      <Link className={className} href={href}>
-        {content}
-      </Link>
-    );
-  }
-
   return (
-    <button className={className} type="button">
-      {content}
-    </button>
-  );
-}
-
-export function BottomDock({ active = "Home" }: { active?: "Home" | "Mail" | "Tools" }) {
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const pathname = usePathname();
-  const items: DockItem[] = [
-    { label: "Home", icon: LayoutDashboard, active: active === "Home", href: "/" },
-    {
-      label: "Search",
-      icon: Search,
-      options: [
-        { label: "Inbox", href: "/email", icon: Mail },
-        { label: "Calendar", icon: CalendarDays },
-      ],
-    },
-    {
-      label: "AI",
-      icon: Sparkles,
-      options: [
-        { label: "Generate brief", icon: Sparkles },
-        { label: "Sync day", icon: RefreshCcw },
-      ],
-    },
-    {
-      label: "Tools",
-      icon: Wrench,
-      active: active === "Tools",
-      options: [
-        { label: "To-do", href: "/todo", icon: ListTodo },
-        { label: "Real estate", href: "/real-estate", icon: Home },
-        { label: "Ledger", href: "/ledger", icon: WalletCards },
-        { label: "Coming soon", icon: DatabaseZap },
-      ],
-    },
-    {
-      label: "Settings",
-      icon: Settings,
-      options: [
-        { label: "Profile", icon: UserCircle },
-        { label: "Log out", icon: LogOut, action: "signOut" },
-      ],
-    },
-  ];
-
-  return (
-    <nav
-      aria-label="Primary"
-      className="fixed bottom-3 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-[var(--line)] bg-[rgba(255,253,248,0.92)] px-2 py-2 shadow-[var(--shadow-soft)] backdrop-blur-xl lg:hidden"
+    <Link
+      aria-current={active ? "page" : undefined}
+      className={`flex items-center gap-3 rounded-[13px] px-3 py-[11px] text-sm no-underline transition ${
+        active
+          ? "bg-[var(--panel-strong)] font-bold text-[var(--accent-ink)]"
+          : "font-semibold text-[var(--muted)] hover:bg-[#F2E8D6]"
+      }`}
+      href={href}
     >
-      {items.map((item) => (
-        <DockButton
-          item={item}
-          key={item.label}
-          onOpenChange={setOpenMenu}
-          open={openMenu === item.label}
-          pathname={pathname}
-        />
-      ))}
-    </nav>
+      <Icon size={19} strokeWidth={1.9} />
+      <span className="flex-1">{label}</span>
+      {badge ? (
+        <span className="rounded-lg bg-[var(--panel-strong)] px-[7px] py-0.5 text-[10px] font-extrabold tracking-[0.04em] text-[var(--accent-ink)]">
+          {badge}
+        </span>
+      ) : null}
+    </Link>
   );
 }
 
-function DockButton({
-  item,
-  onOpenChange,
-  open,
+export function BottomDock({
+  active,
   pathname,
 }: {
-  item: DockItem;
-  onOpenChange: (label: string | null) => void;
-  open: boolean;
-  pathname: string;
+  active?: AppSection;
+  pathname?: string;
 }) {
-  const Icon = item.icon;
-  const hasOptions = Boolean(item.options?.length);
-  const isActive = Boolean(item.active);
-  const buttonClass = `flex h-10 w-10 items-center justify-center rounded-full transition ${
-    isActive
-      ? "border border-[rgba(244,126,22,0.24)] bg-[rgba(244,126,22,0.14)] text-[var(--accent)] shadow-[0_10px_20px_rgba(232,75,27,0.12)]"
-      : open
-      ? "bg-[var(--panel-strong)] text-[var(--accent)]"
-      : "text-[var(--muted)] hover:bg-[var(--panel-strong)] hover:text-[var(--accent)]"
-  }`;
+  const [open, setOpen] = useState<"life" | "tool" | "setting" | null>(null);
+  const currentPath = pathname ?? "";
+  const settingItems: NavChild[] = [
+    { label: "Profile", href: "/profile", icon: SlidersHorizontal },
+    { label: "Sync", href: "/profile", icon: Settings2 },
+    { label: "Log Out", href: "/auth/signout", icon: Settings2 },
+  ];
+  const sheet = open === "life"
+    ? { title: "Life", items: lifeItems }
+    : open === "tool"
+      ? { title: "Tool", items: toolItems }
+      : open === "setting"
+        ? { title: "Setting", items: settingItems }
+        : null;
 
   return (
-    <div
-      className="group relative"
-      onMouseEnter={() => {
-        if (hasOptions) {
-          onOpenChange(item.label);
-        }
-      }}
-      onMouseLeave={() => {
-        if (hasOptions) {
-          onOpenChange(null);
-        }
-      }}
-    >
-      {item.href && !hasOptions ? (
-        <Link aria-current={isActive ? "page" : undefined} aria-label={item.label} className={buttonClass} href={item.href}>
-          <Icon size={19} />
-        </Link>
-      ) : (
-        <button
-          aria-expanded={hasOptions ? open : undefined}
-          aria-label={item.label}
-          className={buttonClass}
-          onClick={() => {
-            if (hasOptions) {
-              onOpenChange(open ? null : item.label);
-            }
-          }}
-          type="button"
-        >
-          <Icon size={19} />
-        </button>
-      )}
-
-      {hasOptions ? (
+    <div className="fixed inset-x-0 bottom-0 z-50 px-4 pb-6 lg:hidden">
+      {sheet ? (
         <>
-          <div
-            aria-hidden="true"
-            className={`absolute bottom-11 left-1/2 h-6 min-w-44 -translate-x-1/2 ${
-              open ? "pointer-events-auto" : "pointer-events-none"
-            }`}
+          <button
+            aria-label={`Close ${sheet.title} menu`}
+            className="fixed inset-0 bottom-0 z-[-1] bg-[rgba(42,30,20,.32)]"
+            onClick={() => setOpen(null)}
+            type="button"
           />
-          <div
-            className={`absolute bottom-16 left-1/2 min-w-44 -translate-x-1/2 rounded-[1.25rem] border border-[var(--line)] bg-[var(--surface)] p-2 shadow-[var(--shadow-soft)] transition ${
-              open ? "pointer-events-auto translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"
-            }`}
-          >
-            {item.options?.map((option) => {
-              const OptionIcon = option.icon;
-              const optionActive = Boolean(option.href && pathname === option.href);
-              const className = `flex h-11 w-full items-center gap-3 rounded-full px-3 text-left text-sm font-medium transition ${
-                optionActive
-                  ? "bg-[rgba(244,126,22,0.12)] text-[var(--accent)]"
-                  : "text-[var(--muted)] hover:bg-[var(--panel-strong)] hover:text-[var(--accent)]"
-              }`;
-
-              if (option.href) {
-                return (
-                  <Link aria-current={optionActive ? "page" : undefined} className={className} href={option.href} key={option.label}>
-                    <OptionIcon size={17} />
-                    {option.label}
-                  </Link>
-                );
-              }
-
-              return (
-                <button
-                  className={className}
-                  key={option.label}
-                  onClick={() => {
-                    if (option.action === "signOut") {
-                      void signOutUser();
-                    }
-                  }}
-                  type="button"
-                >
-                  <OptionIcon size={17} />
-                  {option.label}
-                </button>
-              );
-            })}
+          <div className="mb-3 rounded-[22px] border border-[var(--line)] bg-white p-2 shadow-[0_20px_46px_rgba(70,45,18,.26)]">
+            <div className="flex items-center gap-2 px-3 pb-2 pt-[9px]">
+              <span className="text-[11px] font-extrabold uppercase tracking-[0.07em] text-[var(--accent-ink)]">
+                {sheet.title}
+              </span>
+              <span className="flex-1" />
+              <button
+                className="text-[11px] font-bold text-[var(--muted-soft)]"
+                onClick={() => setOpen(null)}
+                type="button"
+              >
+                Close
+              </button>
+            </div>
+            {sheet.items.map((item) => (
+              <Link
+                className="flex items-center gap-3 rounded-[14px] px-3 py-[13px] no-underline transition hover:bg-[#FBF6EC]"
+                href={item.href}
+                key={`${sheet.title}-${item.label}`}
+                onClick={() => setOpen(null)}
+              >
+                <span className="h-[9px] w-[9px] shrink-0 rounded-[3px] bg-[var(--accent)]" />
+                <span className="flex-1 text-[14.5px] font-bold text-[var(--foreground)]">{item.label}</span>
+                <ChevronRight size={17} strokeWidth={2.2} className="text-[#C4B79C]" />
+              </Link>
+            ))}
           </div>
         </>
       ) : null}
+
+      <nav
+        aria-label="Mobile navigation"
+        className="mx-auto flex w-fit items-center gap-1.5 rounded-[30px] border border-[#EDE3CF] bg-[rgba(255,255,255,.97)] px-3 py-2.5 shadow-[var(--shadow-soft)] backdrop-blur-xl"
+      >
+        <DockLink href="/" label="Overview" active={active === "overview" || currentPath === "/"} icon={Grid2X2} />
+        <DockButton label="Life" active={active === "life" || ["email", "calendar", "todo"].includes(active ?? "") || open === "life"} onClick={() => setOpen(open === "life" ? null : "life")}>
+          <CitrusLifeIcon className="h-[22px] w-[22px]" />
+        </DockButton>
+        <DockCustomLink href="/chengzi" label="Cheng Zi" active={active === "chengzi"}>
+          <ChengZiDockIcon className="h-[30px] w-[30px]" />
+        </DockCustomLink>
+        <DockButton label="Tools" active={active === "tool" || ["realestate", "ledger", "assets"].includes(active ?? "") || open === "tool"} onClick={() => setOpen(open === "tool" ? null : "tool")}>
+          <ToolDockIcon className="h-[22px] w-[22px]" />
+        </DockButton>
+        <DockButton label="Settings" active={active === "profile" || active === "setting" || open === "setting"} onClick={() => setOpen(open === "setting" ? null : "setting")}>
+          <Settings2 size={22} strokeWidth={1.8} />
+        </DockButton>
+      </nav>
     </div>
   );
 }
 
-async function signOutUser() {
-  await fetch("/auth/signout", { method: "POST" });
-  window.location.assign("/login");
+function DockLink({
+  href,
+  label,
+  active,
+  icon: Icon,
+}: {
+  href: string;
+  label: string;
+  active: boolean;
+  icon: LucideIcon;
+}) {
+  return (
+    <Link
+      aria-current={active ? "page" : undefined}
+      aria-label={label}
+      className={`flex h-[42px] w-12 items-center justify-center rounded-[15px] no-underline transition hover:-translate-y-px ${
+        active ? "bg-[var(--panel-strong)] text-[var(--accent-hot)]" : "text-[#A99B82]"
+      }`}
+      href={href}
+    >
+      <Icon size={22} strokeWidth={1.9} />
+    </Link>
+  );
+}
+
+function DockCustomLink({
+  active,
+  children,
+  href,
+  label,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+  href: string;
+  label: string;
+}) {
+  return (
+    <Link
+      aria-current={active ? "page" : undefined}
+      aria-label={label}
+      className={`flex h-[42px] w-12 items-center justify-center rounded-[15px] no-underline transition hover:-translate-y-px ${
+        active ? "bg-[var(--panel-strong)] text-[var(--accent-hot)]" : "text-[#A99B82]"
+      }`}
+      href={href}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function DockButton({
+  active,
+  children,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      aria-label={label}
+      className={`flex h-[42px] w-12 items-center justify-center rounded-[15px] transition hover:-translate-y-px ${
+        active ? "bg-[var(--panel-strong)] text-[var(--accent-hot)]" : "text-[#A99B82]"
+      }`}
+      onClick={onClick}
+      type="button"
+    >
+      {children}
+    </button>
+  );
 }
 
 function BrandLogo({ className }: { className?: string }) {
   return (
     <Image
-      alt="Orange OS"
+      alt="JU OS"
       className={className}
-      height={48}
+      height={64}
       priority
-      src="/brand/citrus-logo-mark.svg"
-      width={48}
+      src="/brand/citrus-logo-mark-512.png"
+      width={64}
     />
+  );
+}
+
+function CitrusLifeIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20V10" strokeWidth="1.9" />
+      <path d="M12 11.2C9.35 11 7.35 9.45 6 6.55 8.95 6.25 11.1 7.45 12 10" strokeWidth="1.8" />
+      <path d="M12 11.2c2.65-.2 4.65-1.75 6-4.65-2.95-.3-5.1.9-6 3.45" strokeWidth="1.8" />
+      <path d="M8.9 20h6.2" strokeWidth="1.9" />
+    </svg>
+  );
+}
+
+function ChengZiDockIcon({ className }: { className?: string }) {
+  return (
+    <BrandLogo className={className} />
+  );
+}
+
+function ToolDockIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" strokeWidth="1.8" />
+      <rect x="9" y="9" width="6" height="6" rx="1.2" strokeWidth="1.8" />
+    </svg>
   );
 }

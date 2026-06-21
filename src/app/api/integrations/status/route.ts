@@ -25,20 +25,58 @@ export async function GET() {
   }
 
   const admin = getSupabaseAdmin();
-  const { data: account } = await admin
+  const { data: accounts, error } = await admin
     .from("connected_accounts")
     .select("provider, account_email, scopes, expires_at, updated_at")
     .eq("user_id", user.id)
     .eq("provider", "google")
-    .maybeSingle();
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  const primaryAccount = accounts?.[0] ?? null;
 
   return NextResponse.json({
+    profile: {
+      email: user.email ?? null,
+    },
     google: {
-      connected: Boolean(account),
-      accountEmail: account?.account_email ?? null,
-      scopes: account?.scopes ?? [],
-      expiresAt: account?.expires_at ?? null,
-      updatedAt: account?.updated_at ?? null,
+      connected: Boolean(primaryAccount),
+      accountEmail: primaryAccount?.account_email ?? null,
+      scopes: primaryAccount?.scopes ?? [],
+      expiresAt: primaryAccount?.expires_at ?? null,
+      updatedAt: primaryAccount?.updated_at ?? null,
+      accounts: (accounts ?? []).map((account) => ({
+        provider: account.provider,
+        accountEmail: account.account_email,
+        scopes: account.scopes ?? [],
+        expiresAt: account.expires_at,
+        updatedAt: account.updated_at,
+      })),
     },
   });
+}
+
+export async function DELETE() {
+  if (!hasSupabasePublicEnv() || !process.env.SUPABASE_SECRET_KEY) {
+    return NextResponse.json({ error: "Supabase env is not configured" }, { status: 503 });
+  }
+
+  const supabase = await createClient();
+  const user = await getAuthenticatedUser(supabase);
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const admin = getSupabaseAdmin();
+  const { error } = await admin.from("connected_accounts").delete().eq("user_id", user.id).eq("provider", "google");
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
 }

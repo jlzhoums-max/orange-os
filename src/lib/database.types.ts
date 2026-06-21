@@ -332,6 +332,53 @@ export type Database = {
           project_updates?: Json;
         };
       };
+      todo_tasks: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          notes: string;
+          project: string;
+          due_date: string | null;
+          priority: number | null;
+          labels: string[];
+          completed: boolean;
+          amount: string | null;
+          flagged: boolean;
+          someday: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title: string;
+          notes?: string;
+          project?: string;
+          due_date?: string | null;
+          priority?: number | null;
+          labels?: string[];
+          completed?: boolean;
+          amount?: string | null;
+          flagged?: boolean;
+          someday?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          title?: string;
+          notes?: string;
+          project?: string;
+          due_date?: string | null;
+          priority?: number | null;
+          labels?: string[];
+          completed?: boolean;
+          amount?: string | null;
+          flagged?: boolean;
+          someday?: boolean;
+          updated_at?: string;
+        };
+      };
       ledger_expenses: {
         Row: {
           id: string;

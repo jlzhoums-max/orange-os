@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  applicationName: "Orange OS",
+  applicationName: "JU OS",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Orange OS",
+    title: "JU OS",
   },
-  title: "Orange OS",
+  title: "JU OS",
   description: "A private AI-enabled command center for the day.",
   formatDetection: {
     telephone: false,
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f9fbea",
+  themeColor: "#FBF5EA",
   viewportFit: "cover",
 };
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ArrowRight, CalendarDays, Mail, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { googleIntegrationScopes } from "@/lib/google/scopes";
 
@@ -38,74 +38,53 @@ export function AuthPanel({ mode }: AuthPanelProps) {
   }
 
   return (
-    <main className="os-page flex min-h-screen items-center justify-center px-5 py-10">
-      <section className="grid w-full max-w-6xl overflow-hidden rounded-[2rem] border border-[var(--line)] bg-[rgba(255,253,248,0.74)] shadow-[var(--shadow-soft)] backdrop-blur-xl lg:grid-cols-[1.08fr_0.92fr]">
-        <div className="os-watermark relative min-h-[34rem] overflow-hidden p-7 sm:p-10">
-          <Image
-            alt="Orange OS"
-            className="h-16 w-16"
-            height={64}
-            priority
-            src="/brand/citrus-logo-mark.svg"
-            width={64}
-          />
-          <h1 className="mt-12 max-w-xl text-5xl font-bold tracking-normal text-balance sm:text-6xl">
-            Your day, sliced clearly.
-          </h1>
-          <p className="mt-5 max-w-lg text-lg leading-8 text-[var(--muted)]">
-            Plan your time, track your projects, and keep every part of your life in one warm, focused workspace.
-          </p>
+    <main className="min-h-screen overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
+      <div className="grid min-h-screen lg:grid-cols-[176px_1fr]">
+        <aside className="relative hidden overflow-hidden bg-[linear-gradient(180deg,#F47E16_0%,#E84B1B_100%)] lg:block">
+          <div className="absolute -bottom-16 -left-12 h-72 w-72 rounded-full bg-white/15" />
+          <div className="absolute bottom-20 left-10 h-44 w-44 rounded-[42px] bg-white/18 rotate-[-14deg]" />
+        </aside>
 
-          <div className="mt-10 grid gap-3 sm:grid-cols-3">
-            {[
-              ["Gmail", Mail],
-              ["Calendar", CalendarDays],
-              ["AI brief", Sparkles],
-            ].map(([label, Icon]) => (
-              <div className="rounded-2xl border border-[var(--line)] bg-white/62 p-4" key={label as string}>
-                <Icon className="text-[var(--accent)]" size={19} />
-                <p className="mt-3 text-sm font-semibold">{label as string}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex items-center p-5 sm:p-8">
-          <div className="os-card w-full p-6 sm:p-8">
-            <div className="flex items-center gap-3">
-              <span className="os-icon-bubble flex h-12 w-12 items-center justify-center">
-                <ShieldCheck size={22} />
-              </span>
-              <div>
-                <p className="os-label">Secure workspace</p>
-                <h2 className="text-2xl font-bold">Sign in to Orange OS</h2>
-              </div>
-            </div>
-
-            <p className="mt-5 leading-7 text-[var(--muted)]">
-              Connect Google to unlock private project storage, Gmail, Calendar, and market-aware daily brief workflows.
+        <section className="flex min-h-screen items-center justify-center px-5 py-10">
+          <div className="w-full max-w-[390px] text-center">
+            <Image
+              alt="JU OS"
+              className="mx-auto h-12 w-12"
+              height={48}
+              priority
+              src="/brand/citrus-logo-mark-512.png"
+              width={48}
+            />
+            <h1 className="mt-8 text-[26px] font-extrabold tracking-normal">Welcome to JU OS</h1>
+            <p className="mx-auto mt-3 max-w-[280px] text-sm font-semibold leading-6 text-[var(--muted-soft)]">
+              Sign in to pick up right where you left off.
             </p>
 
             {mode === "missing-env" ? (
-              <div className="mt-6 rounded-[1.5rem] border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800">
-                Supabase environment variables are not configured yet. Add
-                `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-                to `.env.local`, then restart the dev server.
+              <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-left text-sm leading-6 text-red-800">
+                Supabase environment variables are not configured yet. Add `NEXT_PUBLIC_SUPABASE_URL` and
+                `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to `.env.local`, then restart the dev server.
               </div>
             ) : (
               <button
-                className="os-primary-button mt-7 flex h-13 min-h-13 w-full items-center justify-center gap-2 px-5 text-sm font-semibold"
+                className="mt-5 flex h-14 w-full items-center justify-center gap-3 rounded-[14px] border border-[var(--line-strong)] bg-white px-5 text-sm font-extrabold text-[var(--foreground)] shadow-[0_8px_22px_rgba(90,55,20,.08)] transition hover:-translate-y-px disabled:cursor-wait disabled:opacity-70"
                 disabled={loading}
                 onClick={signInWithGoogle}
                 type="button"
               >
+                <span className="text-xl font-extrabold text-[#4285F4]">G</span>
                 {loading ? "Opening Google..." : "Continue with Google"}
-                <ArrowRight size={17} />
+                <ArrowRight size={16} className="text-[var(--muted-soft)]" />
               </button>
             )}
+
+            <p className="mt-5 flex items-start justify-center gap-2 text-left text-xs font-semibold leading-5 text-[var(--muted-faint)]">
+              <Lock size={14} className="mt-0.5 shrink-0" />
+              Private by default - we never post or email on your behalf.
+            </p>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </main>
   );
 }

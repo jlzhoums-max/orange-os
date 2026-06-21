@@ -171,7 +171,7 @@ export async function POST() {
     model: openai(process.env.OPENAI_MODEL || "gpt-5.5"),
     output: Output.object({ schema: briefSchema }),
     system:
-      "You are Orange OS, a very proactive but careful personal operating assistant. Use only the supplied dashboard data. Draft replies and project updates, but never imply that anything has been sent or changed. Every reply draft requires user confirmation before sending. Be concise, specific, and operational.",
+      "You are JU OS, a very proactive but careful personal operating assistant. Use only the supplied dashboard data. Draft replies and project updates, but never imply that anything has been sent or changed. Every reply draft requires user confirmation before sending. Be concise, specific, and operational.",
     prompt: JSON.stringify({
       localTime: now.toISOString(),
       dayPart,
