@@ -34,6 +34,16 @@ type AccountForm = {
   institution: string;
   notes: string;
 };
+type LedgerExpenseEvent = {
+  id?: string;
+  label: string;
+  amount: number;
+  bucket: LedgerBucket;
+  date: string;
+  month?: string;
+  tags?: string[];
+  notes?: string;
+};
 
 const buckets: Array<{ key: LedgerBucket; label: string }> = [
   { key: "needs", label: "Needs" },
@@ -48,11 +58,32 @@ function todayKey() {
 }
 
 function money(value: number) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value || 0);
+  const amount = Number(value || 0);
+  const hasCents = Math.round(amount * 100) % 100 !== 0;
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: hasCents ? 2 : 0,
+    maximumFractionDigits: 2,
+  }).format(amount);
 }
 
 function emptyExpense(date = todayKey()): ExpenseForm {
   return { label: "", amount: "", bucket: "needs", date, tags: "", notes: "" };
+}
+
+function eventToExpense(detail: LedgerExpenseEvent): LedgerExpense {
+  return {
+    id: detail.id ?? `local-ledger-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    label: detail.label,
+    amount: Number(detail.amount ?? 0),
+    bucket: detail.bucket,
+    date: detail.date,
+    month: detail.month ?? detail.date.slice(0, 7),
+    tags: detail.tags ?? [],
+    notes: detail.notes ?? "",
+  };
 }
 
 const emptyAccount: AccountForm = {
@@ -92,6 +123,28 @@ export function LedgerTool() {
     }
 
     void loadLedger();
+  }, []);
+
+  useEffect(() => {
+    function handleExpenseCreated(event: Event) {
+      const detail = (event as CustomEvent<LedgerExpenseEvent>).detail;
+
+      if (!detail?.label || !detail.date) {
+        return;
+      }
+
+      const expense = eventToExpense(detail);
+      setExpenses((current) => [expense, ...current.filter((item) => item.id !== expense.id)]);
+      setViewMonth(expense.month);
+      setTab("budget");
+    }
+
+    window.addEventListener("orange-os-ledger-expense-created", handleExpenseCreated);
+    window.addEventListener("orange-os-local-ledger-expense-create", handleExpenseCreated);
+    return () => {
+      window.removeEventListener("orange-os-ledger-expense-created", handleExpenseCreated);
+      window.removeEventListener("orange-os-local-ledger-expense-create", handleExpenseCreated);
+    };
   }, []);
 
   const now = new Date();

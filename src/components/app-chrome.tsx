@@ -26,6 +26,7 @@ import {
   Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { AssistantPanel } from "@/components/assistant-panel";
 
 type DockItem = {
   label: string;
@@ -37,7 +38,7 @@ type DockItem = {
 };
 
 type AppChromeProps = {
-  active?: "Home" | "Mail" | "Tools";
+  active?: "Home" | "Calendar" | "Mail" | "Tools" | "AI";
   children: React.ReactNode;
 };
 
@@ -52,6 +53,7 @@ export function AppChrome({ active = "Home", children }: AppChromeProps) {
         </div>
       </div>
       <BottomDock active={active} />
+      <AssistantPanel />
     </div>
   );
 }
@@ -113,13 +115,13 @@ export function AppTopbar() {
   );
 }
 
-function Sidebar({ active }: { active: "Home" | "Mail" | "Tools" }) {
+function Sidebar({ active }: { active: "Home" | "Calendar" | "Mail" | "Tools" | "AI" }) {
   const pathname = usePathname();
   const primary = [
     { label: "Today", href: "/", icon: LayoutDashboard, active: active === "Home" && pathname === "/" },
-    { label: "Calendar", icon: CalendarDays },
+    { label: "Calendar", href: "/calendar", icon: CalendarDays, active: active === "Calendar" || pathname === "/calendar" },
     { label: "Inbox", href: "/email", icon: Mail, active: active === "Mail" || pathname === "/email" },
-    { label: "AI Brief", icon: Sparkles },
+    { label: "Chéng zǐ", href: "/cheng-zi", icon: Sparkles, active: active === "AI" || pathname === "/cheng-zi" },
   ];
   const tools = [
     { label: "To-do", href: "/todo", icon: ListTodo },
@@ -212,7 +214,7 @@ function SidebarLink({
   );
 }
 
-export function BottomDock({ active = "Home" }: { active?: "Home" | "Mail" | "Tools" }) {
+export function BottomDock({ active = "Home" }: { active?: "Home" | "Calendar" | "Mail" | "Tools" | "AI" }) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const pathname = usePathname();
   const items: DockItem[] = [
@@ -222,14 +224,15 @@ export function BottomDock({ active = "Home" }: { active?: "Home" | "Mail" | "To
       icon: Search,
       options: [
         { label: "Inbox", href: "/email", icon: Mail },
-        { label: "Calendar", icon: CalendarDays },
+        { label: "Calendar", href: "/calendar", icon: CalendarDays },
       ],
     },
     {
       label: "AI",
       icon: Sparkles,
+      active: active === "AI",
       options: [
-        { label: "Generate brief", icon: Sparkles },
+        { label: "Chéng zǐ memory", href: "/cheng-zi", icon: Sparkles },
         { label: "Sync day", icon: RefreshCcw },
       ],
     },

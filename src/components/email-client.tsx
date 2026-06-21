@@ -21,26 +21,43 @@ import {
   Search,
   Send,
   Sparkles,
-  Star,
   Tag,
   UserPlus,
-  Users,
   Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-type InboxSplit = "Important" | "Team" | "VIPs" | "Tools" | "News";
+type InboxSplit = "All" | "Important" | "Needs Reply" | "Read Later" | "Snoozed" | "Follow Up" | "Tools" | "News";
+type EmailActionLabel = "OrangeOS/Important" | "OrangeOS/Needs Reply" | "OrangeOS/Read Later" | "OrangeOS/News" | "OrangeOS/Tools";
+type EmailMessageAction = "archive" | "unarchive" | "markRead" | "markUnread" | "label" | "snooze" | "unsnooze";
 
 type SyncedEmail = {
+  id: string;
+  connectedAccountId: string | null;
+  accountEmail: string | null;
+  accountName: string | null;
+  gmailMessageId: string;
+  threadId: string | null;
+  split: InboxSplit;
+  from: string;
   sender: string | null;
-  subject: string | null;
-  snippet: string | null;
-  received_at: string | null;
-  labels: string[] | null;
+  subject: string;
+  preview: string;
+  receivedAt: string | null;
+  labels: string[];
+  unread: boolean;
+  important: boolean;
+  reminderAt: string | null;
+  snoozeUntil: string | null;
 };
 
 type MailThread = {
   id: string;
+  connectedAccountId: string | null;
+  accountEmail: string | null;
+  accountName: string | null;
+  gmailMessageId?: string;
+  threadId?: string | null;
   split: InboxSplit;
   from: string;
   role: string;
@@ -52,14 +69,58 @@ type MailThread = {
   priority: "High" | "Normal" | "Low";
   readStatus: string;
   reminder: string;
+  reminderAt: string | null;
+  snoozeUntil: string | null;
   labels: string[];
   aiDraft: string;
 };
 
+type EmailStatus = {
+  dueFollowUps: number;
+  scheduledFollowUps: number;
+  snoozed: number;
+  dueSnoozed: number;
+  recentRuns: Array<{
+    trigger: string;
+    status: string;
+    gmail_count: number;
+    error: string | null;
+    started_at: string;
+    completed_at: string | null;
+  }>;
+};
+
+type GoogleAccountSummary = {
+  id: string;
+  account_email: string | null;
+  display_name: string | null;
+  is_primary: boolean;
+};
+
+type UndoAction = {
+  action: Extract<EmailMessageAction, "unarchive" | "unsnooze" | "markRead" | "markUnread">;
+  label: string;
+  thread: MailThread;
+};
+
+type EmailMessageDetail = {
+  body: string;
+  headers: {
+    from: string | null;
+    to: string | null;
+    subject: string | null;
+    date: string | null;
+    messageId: string | null;
+  };
+};
+
 const splitIcons: Record<InboxSplit, LucideIcon> = {
+  All: Inbox,
   Important: Zap,
-  Team: Users,
-  VIPs: Star,
+  "Needs Reply": MessageSquare,
+  "Read Later": Clock3,
+  Snoozed: Clock3,
+  "Follow Up": Bell,
   Tools: Tag,
   News: Inbox,
 };
@@ -73,20 +134,10 @@ const commandItems = [
   "Forward to task list",
 ];
 
-function splitFromEmail(email: SyncedEmail): InboxSplit {
-  const haystack = [email.sender, email.subject, email.snippet, ...(email.labels ?? [])].join(" ").toLowerCase();
-
-  if (haystack.includes("important") || haystack.includes("urgent")) return "Important";
-  if (haystack.includes("calendar") || haystack.includes("investor") || haystack.includes("vip")) return "VIPs";
-  if (haystack.includes("newsletter") || haystack.includes("brief") || haystack.includes("news")) return "News";
-  if (haystack.includes("stripe") || haystack.includes("openai") || haystack.includes("google") || haystack.includes("vercel")) return "Tools";
-  return "Team";
-}
-
 function priorityFromEmail(email: SyncedEmail): MailThread["priority"] {
-  const haystack = [email.subject, email.snippet, ...(email.labels ?? [])].join(" ").toLowerCase();
+  const haystack = [email.subject, email.preview, ...email.labels].join(" ").toLowerCase();
 
-  if (haystack.includes("important") || haystack.includes("urgent") || haystack.includes("action required")) return "High";
+  if (email.important || haystack.includes("important") || haystack.includes("urgent") || haystack.includes("action required")) return "High";
   if (haystack.includes("newsletter") || haystack.includes("promotion")) return "Low";
   return "Normal";
 }
@@ -105,6 +156,55 @@ function formatMailTime(value: string | null) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
 }
 
+function formatReminder(value: string | null) {
+  if (!value) return "No reminder set";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "No reminder set";
+
+  return `Follow up ${new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date)}`;
+}
+
+function formatSnooze(value: string | null) {
+  if (!value) return "No snooze deadline";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "No snooze deadline";
+
+  return `Snoozed until ${new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date)}`;
+}
+
+function isPastIso(value: string | null) {
+  return Boolean(value && new Date(value).getTime() <= Date.now());
+}
+
+function defaultSnoozeLocalDateTime() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(8, 0, 0, 0);
+  return dateTimeLocalFromIso(tomorrow.toISOString());
+}
+
+function dateTimeLocalFromIso(value: string | null) {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const offsetMs = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
 function cleanSender(sender: string | null) {
   if (!sender) return "Unknown sender";
   return sender.replace(/\s*<.*?>\s*/g, "").replaceAll('"', "").trim() || sender;
@@ -115,28 +215,43 @@ function senderRole(sender: string | null) {
   return email.includes("@") ? email : "Synced Gmail";
 }
 
-function emailToThread(email: SyncedEmail, index: number): MailThread {
-  const from = cleanSender(email.sender);
+function emailToThread(email: SyncedEmail): MailThread {
+  const from = email.from || cleanSender(email.sender);
   const subject = email.subject?.trim() || "(No subject)";
-  const preview = email.snippet?.trim() || "No preview was synced for this message.";
-  const labels = email.labels?.filter(Boolean).slice(0, 4) ?? [];
+  const preview = email.preview?.trim() || "No preview was synced for this message.";
+  const labels = email.labels.filter(Boolean).slice(0, 4);
 
   return {
-    id: `${email.received_at ?? "email"}-${index}`,
-    split: splitFromEmail(email),
+    id: email.id,
+    connectedAccountId: email.connectedAccountId,
+    accountEmail: email.accountEmail,
+    accountName: email.accountName,
+    gmailMessageId: email.gmailMessageId,
+    threadId: email.threadId,
+    split: email.split,
     from,
     role: senderRole(email.sender),
     subject,
     preview,
     body: [preview],
-    time: formatMailTime(email.received_at),
-    unread: labels.some((label) => label.toLowerCase() === "unread"),
+    time: formatMailTime(email.receivedAt),
+    unread: email.unread,
     priority: priorityFromEmail(email),
-    readStatus: labels.some((label) => label.toLowerCase() === "unread") ? "Unread" : "Synced",
-    reminder: "No reminder set",
+    readStatus: email.unread ? "Unread in Gmail" : "Synced from Gmail",
+    reminder: formatReminder(email.reminderAt),
+    reminderAt: email.reminderAt,
+    snoozeUntil: email.snoozeUntil,
     labels: labels.length ? labels : ["Gmail"],
-    aiDraft: `Draft a concise reply to "${subject}" after I review the full context.`,
+    aiDraft: `Thanks for sending this over. I reviewed "${subject}" and will follow up with the next step shortly.`,
   };
+}
+
+function paragraphsFromBody(value: string) {
+  return value
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .slice(0, 8);
 }
 
 function priorityClass(priority: MailThread["priority"]) {
@@ -147,44 +262,79 @@ function priorityClass(priority: MailThread["priority"]) {
 
 export function EmailClient() {
   const [threads, setThreads] = useState<MailThread[]>([]);
+  const [accounts, setAccounts] = useState<GoogleAccountSummary[]>([]);
+  const [activeAccountId, setActiveAccountId] = useState<string>("all");
   const [activeSplit, setActiveSplit] = useState<InboxSplit>("Important");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState("");
   const [reminder, setReminder] = useState("No reminder set");
+  const [reminderAtInput, setReminderAtInput] = useState("");
+  const [snoozeUntilInput, setSnoozeUntilInput] = useState(defaultSnoozeLocalDateTime);
   const [status, setStatus] = useState("Loading synced mail");
+  const [emailStatus, setEmailStatus] = useState<EmailStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [messageDetail, setMessageDetail] = useState<(EmailMessageDetail & { messageId: string }) | null>(null);
+  const [messageLoading, setMessageLoading] = useState(false);
+  const [draftCreating, setDraftCreating] = useState(false);
+  const [createdDraftId, setCreatedDraftId] = useState<string | null>(null);
+  const [createdDraftAccountId, setCreatedDraftAccountId] = useState<string | null>(null);
+  const [acting, setActing] = useState(false);
+  const [separating, setSeparating] = useState(false);
+  const [sendConfirm, setSendConfirm] = useState(false);
+  const [sendingDraft, setSendingDraft] = useState(false);
+  const [lastUndo, setLastUndo] = useState<UndoAction | null>(null);
+
+  const loadEmailStatus = useCallback(async () => {
+    try {
+      const response = await fetch("/api/email/status", { cache: "no-store" });
+      const payload = (await response.json()) as EmailStatus & { error?: string };
+
+      if (response.ok) {
+        setEmailStatus(payload);
+      }
+    } catch {
+      setEmailStatus(null);
+    }
+  }, []);
 
   const loadMail = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch("/api/dashboard/data", { cache: "no-store" });
-      const payload = (await response.json()) as { emails?: SyncedEmail[]; error?: string };
+      const response = await fetch("/api/email/threads", { cache: "no-store" });
+      const payload = (await response.json()) as { accounts?: GoogleAccountSummary[]; threads?: SyncedEmail[]; error?: string };
 
       if (!response.ok) {
         throw new Error(payload.error ?? "Email data could not be loaded.");
       }
 
-      const nextThreads = (payload.emails ?? []).map(emailToThread);
+      const nextThreads = (payload.threads ?? []).map(emailToThread);
+      setAccounts(payload.accounts ?? []);
       setThreads(nextThreads);
       setSelectedId(nextThreads[0]?.id ?? null);
       setDraft(nextThreads[0]?.aiDraft ?? "");
       setReminder(nextThreads[0]?.reminder ?? "No reminder set");
+      setReminderAtInput(dateTimeLocalFromIso(nextThreads[0]?.reminderAt ?? null));
+      setSnoozeUntilInput(dateTimeLocalFromIso(nextThreads[0]?.snoozeUntil ?? null) || defaultSnoozeLocalDateTime());
       setStatus(nextThreads.length ? `Loaded ${nextThreads.length} synced email${nextThreads.length === 1 ? "" : "s"}` : "No synced mail yet");
+      void loadEmailStatus();
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Email data could not be loaded.");
       setThreads([]);
+      setAccounts([]);
       setSelectedId(null);
       setDraft("");
+      setReminderAtInput("");
+      setSnoozeUntilInput(defaultSnoozeLocalDateTime());
       setStatus("Email connection needs attention");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadEmailStatus]);
 
   useEffect(() => {
     const loadTimer = window.setTimeout(() => {
@@ -195,12 +345,69 @@ export function EmailClient() {
   }, [loadMail]);
 
   const selectedThread = threads.find((thread) => thread.id === selectedId) ?? threads[0] ?? null;
+  const selectedMessageDetail =
+    selectedThread?.gmailMessageId && messageDetail?.messageId === selectedThread.gmailMessageId
+      ? messageDetail
+      : null;
+
+  useEffect(() => {
+    if (!selectedThread?.gmailMessageId) {
+      return;
+    }
+
+    let cancelled = false;
+    const messageId = selectedThread.gmailMessageId;
+
+    async function loadMessageDetail() {
+      setMessageLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch(`/api/email/messages/${messageId}`, {
+          cache: "no-store",
+        });
+        const payload = (await response.json()) as EmailMessageDetail & { error?: string };
+
+        if (!response.ok) {
+          throw new Error(payload.error ?? "Gmail message could not be loaded.");
+        }
+
+        if (!cancelled) {
+          setMessageDetail({ ...payload, messageId });
+        }
+      } catch (detailError) {
+        if (!cancelled) {
+          setError(detailError instanceof Error ? detailError.message : "Gmail message could not be loaded.");
+        }
+      } finally {
+        if (!cancelled) {
+          setMessageLoading(false);
+        }
+      }
+    }
+
+    void loadMessageDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedThread?.gmailMessageId]);
 
   const visibleThreads = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
     return threads.filter((thread) => {
-      const matchesSplit = activeSplit === "Important" ? thread.priority === "High" || thread.split === "Important" : thread.split === activeSplit;
+      const matchesAccount = activeAccountId === "all" || thread.connectedAccountId === activeAccountId;
+      if (!matchesAccount) return false;
+
+      const matchesSplit =
+        activeSplit === "All"
+          ? true
+          : activeSplit === "Important"
+            ? thread.priority === "High" || thread.split === "Important"
+            : activeSplit === "Follow Up"
+              ? isPastIso(thread.reminderAt)
+              : thread.split === activeSplit;
 
       if (!matchesSplit) return false;
       if (!normalizedQuery) return true;
@@ -210,12 +417,16 @@ export function EmailClient() {
         .toLowerCase()
         .includes(normalizedQuery);
     });
-  }, [activeSplit, query, threads]);
+  }, [activeAccountId, activeSplit, query, threads]);
 
   function selectThread(thread: MailThread) {
     setSelectedId(thread.id);
     setDraft(thread.aiDraft);
     setReminder(thread.reminder);
+    setReminderAtInput(dateTimeLocalFromIso(thread.reminderAt));
+    setSnoozeUntilInput(dateTimeLocalFromIso(thread.snoozeUntil) || defaultSnoozeLocalDateTime());
+    setCreatedDraftId(null);
+    setCreatedDraftAccountId(null);
     setStatus("Ready");
   }
 
@@ -225,7 +436,7 @@ export function EmailClient() {
     setError(null);
 
     try {
-      const response = await fetch("/api/integrations/google/gmail/sync", { method: "POST" });
+      const response = await fetch("/api/email/threads", { method: "POST" });
       const payload = (await response.json()) as { synced?: number; error?: string };
 
       if (!response.ok) {
@@ -242,19 +453,296 @@ export function EmailClient() {
     }
   }
 
+  async function separateMail() {
+    setSeparating(true);
+    setStatus("Separating inbox");
+    setError(null);
+
+    try {
+      const response = await fetch("/api/email/separate", { method: "POST" });
+      const payload = (await response.json()) as { categorized?: number; failed?: number; error?: string };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Email separator failed.");
+      }
+
+      setStatus(`Separated ${payload.categorized ?? 0} emails${payload.failed ? `, ${payload.failed} failed` : ""}`);
+      await loadMail();
+    } catch (separatorError) {
+      setError(separatorError instanceof Error ? separatorError.message : "Email separator failed.");
+      setStatus("Separator needs attention");
+    } finally {
+      setSeparating(false);
+    }
+  }
+
   function useAiDraft() {
     if (!selectedThread) return;
     setDraft(selectedThread.aiDraft);
     setStatus("AI draft inserted");
   }
 
-  function sendDraft() {
-    setStatus("Draft queued for your review");
+  async function createDraft() {
+    if (!selectedThread?.gmailMessageId) {
+      setStatus("Draft queued locally");
+      return;
+    }
+
+    setDraftCreating(true);
+    setCreatedDraftId(null);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/email/drafts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          body: draft,
+          messageId: selectedThread.gmailMessageId,
+        }),
+      });
+      const payload = (await response.json()) as { connectedAccountId?: string | null; draftId?: string; error?: string };
+
+      if (!response.ok || !payload.draftId) {
+        throw new Error(payload.error ?? "Gmail draft could not be created.");
+      }
+
+      setCreatedDraftId(payload.draftId);
+      setCreatedDraftAccountId(payload.connectedAccountId ?? null);
+      setStatus("Gmail draft created");
+    } catch (draftError) {
+      setError(draftError instanceof Error ? draftError.message : "Gmail draft could not be created.");
+      setStatus("Draft needs attention");
+    } finally {
+      setDraftCreating(false);
+    }
+  }
+
+  async function runMessageAction(
+    action: EmailMessageAction,
+    label?: EmailActionLabel,
+    targetThread = selectedThread,
+    isUndo = false,
+  ) {
+    if (!targetThread?.gmailMessageId) {
+      setStatus("Sync Gmail before running message actions");
+      return;
+    }
+
+    setActing(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/email/messages/${targetThread.gmailMessageId}/actions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action,
+          label,
+          snoozeUntil: action === "snooze" && snoozeUntilInput ? new Date(snoozeUntilInput).toISOString() : undefined,
+        }),
+      });
+      const payload = (await response.json()) as { labels?: string[]; error?: string };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Gmail action failed.");
+      }
+
+      if (action === "archive" || action === "snooze") {
+        setThreads((current) => current.filter((thread) => thread.id !== targetThread.id));
+        const nextThread = threads.find((thread) => thread.id !== targetThread.id) ?? null;
+        setSelectedId(nextThread?.id ?? null);
+        setDraft(nextThread?.aiDraft ?? "");
+        setReminder(nextThread?.reminder ?? "No reminder set");
+        setReminderAtInput(dateTimeLocalFromIso(nextThread?.reminderAt ?? null));
+        setStatus(action === "archive" ? "Archived in Gmail" : "Snoozed out of Inbox");
+        setLastUndo(
+          isUndo
+            ? null
+            : {
+                action: action === "archive" ? "unarchive" : "unsnooze",
+                label: action === "archive" ? "Undo archive" : "Undo snooze",
+                thread: targetThread,
+              },
+        );
+        void loadEmailStatus();
+        return;
+      }
+
+      if (action === "unarchive" || action === "unsnooze") {
+        const restoredThread =
+          action === "unsnooze"
+            ? {
+                ...targetThread,
+                split: "Read Later" as InboxSplit,
+                labels: targetThread.labels.filter((threadLabel) => threadLabel !== "OrangeOS/Snoozed"),
+                snoozeUntil: null,
+              }
+            : targetThread;
+
+        setThreads((current) =>
+          current.some((thread) => thread.id === restoredThread.id) ? current : [restoredThread, ...current],
+        );
+        setSelectedId(restoredThread.id);
+        setDraft(restoredThread.aiDraft);
+        setReminder(restoredThread.reminder);
+        setReminderAtInput(dateTimeLocalFromIso(restoredThread.reminderAt));
+        setSnoozeUntilInput(dateTimeLocalFromIso(restoredThread.snoozeUntil) || defaultSnoozeLocalDateTime());
+        setStatus(action === "unarchive" ? "Archive undone" : "Snooze undone");
+        setLastUndo(null);
+        void loadEmailStatus();
+        return;
+      }
+
+      if (action === "label" && label) {
+        const nextSplit = label.replace("OrangeOS/", "") as InboxSplit;
+        setThreads((current) =>
+          current.map((thread) =>
+            thread.id === targetThread.id
+              ? {
+                  ...thread,
+                  labels: Array.from(new Set([...thread.labels, label])).slice(0, 4),
+                  priority: label === "OrangeOS/Important" ? "High" : thread.priority,
+                  split: nextSplit,
+                }
+              : thread,
+          ),
+        );
+        setStatus(`Labeled ${nextSplit}`);
+        void loadEmailStatus();
+        return;
+      }
+
+      const labels = payload.labels ?? [];
+      const unread = labels.includes("UNREAD");
+      setThreads((current) =>
+        current.map((thread) =>
+          thread.id === targetThread.id
+            ? {
+                ...thread,
+                labels: labels.length ? labels.slice(0, 4) : ["Gmail"],
+                readStatus: unread ? "Unread in Gmail" : "Synced from Gmail",
+                unread,
+              }
+            : thread,
+        ),
+      );
+      setStatus(action === "markRead" ? "Marked read in Gmail" : "Marked unread in Gmail");
+      void loadEmailStatus();
+      setLastUndo(
+        isUndo
+          ? null
+          : {
+              action: action === "markRead" ? "markUnread" : "markRead",
+              label: action === "markRead" ? "Undo mark read" : "Undo mark unread",
+              thread: targetThread,
+            },
+      );
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : "Gmail action failed.");
+      setStatus("Message action needs attention");
+    } finally {
+      setActing(false);
+    }
+  }
+
+  async function undoLastMessageAction() {
+    if (!lastUndo) return;
+    await runMessageAction(lastUndo.action, undefined, lastUndo.thread, true);
+  }
+
+  async function saveReminder(nextReminderAt: string | null) {
+    if (!selectedThread?.gmailMessageId) {
+      setStatus("Select a synced Gmail message first");
+      return;
+    }
+
+    setActing(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/email/messages/${selectedThread.gmailMessageId}/reminder`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reminderAt: nextReminderAt }),
+      });
+      const payload = (await response.json()) as { reminderAt?: string | null; error?: string };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Reminder could not be saved.");
+      }
+
+      const reminderAt = payload.reminderAt ?? null;
+      const reminderLabel = formatReminder(reminderAt);
+      setThreads((current) =>
+        current.map((thread) =>
+          thread.id === selectedThread.id
+            ? {
+                ...thread,
+                reminder: reminderLabel,
+                reminderAt,
+              }
+            : thread,
+        ),
+      );
+      setReminder(reminderLabel);
+      setReminderAtInput(dateTimeLocalFromIso(reminderAt));
+      setStatus(reminderAt ? "Follow-up reminder saved" : "Follow-up reminder cleared");
+      void loadEmailStatus();
+    } catch (reminderError) {
+      setError(reminderError instanceof Error ? reminderError.message : "Reminder could not be saved.");
+      setStatus("Reminder needs attention");
+    } finally {
+      setActing(false);
+    }
   }
 
   function archiveThread() {
-    if (!selectedThread) return;
-    setStatus(`${selectedThread.subject} archived locally`);
+    void runMessageAction("archive");
+  }
+
+  async function sendConfirmedDraft() {
+    if (!createdDraftId || !sendConfirm) {
+      return;
+    }
+
+    setSendingDraft(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/email/drafts/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          confirm: true,
+          connectedAccountId: createdDraftAccountId,
+          draftId: createdDraftId,
+        }),
+      });
+      const payload = (await response.json()) as { messageId?: string; error?: string };
+
+      if (!response.ok || !payload.messageId) {
+        throw new Error(payload.error ?? "Gmail draft could not be sent.");
+      }
+
+      setCreatedDraftId(null);
+      setCreatedDraftAccountId(null);
+      setSendConfirm(false);
+      setStatus("Sent from Gmail");
+    } catch (sendError) {
+      setError(sendError instanceof Error ? sendError.message : "Gmail draft could not be sent.");
+      setStatus("Send needs attention");
+    } finally {
+      setSendingDraft(false);
+    }
   }
 
   return (
@@ -273,6 +761,15 @@ export function EmailClient() {
               <RefreshCcw size={17} className={syncing ? "animate-spin" : ""} />
               {syncing ? "Syncing" : "Sync mail"}
             </button>
+            <button
+              className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-[#edc9ac] bg-white px-4 text-sm font-bold text-[#df5a12] hover:bg-[#fff0df] disabled:cursor-wait disabled:opacity-70"
+              disabled={separating}
+              onClick={separateMail}
+              type="button"
+            >
+              <Sparkles size={16} className={separating ? "animate-pulse" : ""} />
+              {separating ? "Separating..." : "Run separator"}
+            </button>
             <label className="mt-3 flex h-10 items-center gap-2 rounded-lg border border-[#edc9ac] bg-white px-3 text-sm text-[#3b2416] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
               <Search size={16} className="text-[#a97958]" />
               <input
@@ -286,10 +783,50 @@ export function EmailClient() {
             </label>
           </div>
 
+          <div className="border-b border-[#f0c9a9] p-3">
+            <div className="grid gap-2">
+              <button
+                className={`rounded-lg px-3 py-2 text-left text-xs font-bold ${
+                  activeAccountId === "all" ? "bg-[#ff6b1a] text-white" : "border border-[#edc9ac] bg-white text-[#6f4a32] hover:bg-[#fff0df]"
+                }`}
+                onClick={() => setActiveAccountId("all")}
+                type="button"
+              >
+                All accounts
+              </button>
+              {accounts.map((account) => (
+                <button
+                  className={`rounded-lg px-3 py-2 text-left text-xs font-bold ${
+                    activeAccountId === account.id ? "bg-[#ff6b1a] text-white" : "border border-[#edc9ac] bg-white text-[#6f4a32] hover:bg-[#fff0df]"
+                  }`}
+                  key={account.id}
+                  onClick={() => setActiveAccountId(account.id)}
+                  type="button"
+                >
+                  {account.display_name ?? account.account_email ?? "Google account"}
+                </button>
+              ))}
+              <a
+                className="rounded-lg border border-dashed border-[#edc9ac] bg-white px-3 py-2 text-center text-xs font-bold text-[#df5a12] hover:bg-[#fff0df]"
+                href="/api/integrations/google/connect?next=/email"
+              >
+                Connect Google account
+              </a>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-5 xl:grid-cols-1">
             {(Object.keys(splitIcons) as InboxSplit[]).map((split) => {
               const Icon = splitIcons[split];
-              const count = split === "Important" ? threads.filter((thread) => thread.priority === "High").length : threads.filter((thread) => thread.split === split).length;
+              const countedThreads = activeAccountId === "all" ? threads : threads.filter((thread) => thread.connectedAccountId === activeAccountId);
+              const count =
+                split === "All"
+                  ? countedThreads.length
+                  : split === "Important"
+                    ? countedThreads.filter((thread) => thread.priority === "High" || thread.split === "Important").length
+                    : split === "Follow Up"
+                      ? countedThreads.filter((thread) => isPastIso(thread.reminderAt)).length
+                      : countedThreads.filter((thread) => thread.split === split).length;
               const isActive = activeSplit === split;
 
               return (
@@ -338,6 +875,26 @@ export function EmailClient() {
                   </div>
                   <p className="mt-2 line-clamp-2 text-[12px] leading-5 text-[#7a5a42]">{thread.preview}</p>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {thread.gmailMessageId ? (
+                      <span className="rounded-full bg-[#ecffe3] px-2 py-0.5 text-[11px] font-semibold text-[#58733d]">
+                        Gmail
+                      </span>
+                    ) : null}
+                    {thread.accountEmail ? (
+                      <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-[#8c5f3d]">
+                        {thread.accountEmail}
+                      </span>
+                    ) : null}
+                    {thread.reminderAt ? (
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${isPastIso(thread.reminderAt) ? "bg-[#ffe3d2] text-[#b9470f]" : "bg-[#fff7cc] text-[#8a6a12]"}`}>
+                        {isPastIso(thread.reminderAt) ? "Due now" : thread.reminder}
+                      </span>
+                    ) : null}
+                    {thread.snoozeUntil ? (
+                      <span className="rounded-full bg-[#f1edff] px-2 py-0.5 text-[11px] font-semibold text-[#65529d]">
+                        {formatSnooze(thread.snoozeUntil)}
+                      </span>
+                    ) : null}
                     <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${priorityClass(thread.priority)}`}>
                       {thread.priority}
                     </span>
@@ -367,9 +924,15 @@ export function EmailClient() {
                 </h1>
               </div>
               <div className="flex flex-wrap gap-2">
-                <MailAction icon={Archive} label="Archive" onClick={archiveThread} disabled={!selectedThread} />
-                <MailAction icon={Clock3} label="Remind" onClick={() => setStatus(reminder)} disabled={!selectedThread} />
-                <MailAction icon={CornerUpLeft} label="Reply" onClick={useAiDraft} variant="primary" disabled={!selectedThread} />
+                <MailAction icon={Archive} label={acting ? "Working" : "Archive"} onClick={archiveThread} disabled={!selectedThread || acting} />
+                <MailAction icon={Clock3} label="Remind" onClick={() => setStatus(reminder)} disabled={!selectedThread || acting} />
+                <MailAction icon={CornerUpLeft} label="Reply" onClick={useAiDraft} variant="primary" disabled={!selectedThread || acting} />
+                <MailAction
+                  icon={CornerUpLeft}
+                  label={lastUndo?.label ?? "Undo"}
+                  onClick={() => void undoLastMessageAction()}
+                  disabled={!lastUndo || acting}
+                />
               </div>
             </div>
           </div>
@@ -398,7 +961,8 @@ export function EmailClient() {
                   </div>
 
                   <div className="space-y-4 p-5 text-[15px] leading-7 text-[#3b2416] sm:p-7">
-                    {selectedThread.body.map((paragraph) => (
+                    {messageLoading ? <p>Loading full message from Gmail...</p> : null}
+                    {(selectedMessageDetail?.body ? paragraphsFromBody(selectedMessageDetail.body) : selectedThread.body).map((paragraph) => (
                       <p key={paragraph}>{paragraph}</p>
                     ))}
                   </div>
@@ -443,17 +1007,42 @@ export function EmailClient() {
                 value={draft}
               />
               <div className="flex flex-col gap-3 border-t border-[#f1d8c3] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs font-semibold text-[#7a5a42]">Replies stay queued until you confirm a future send flow</p>
+                <p className="text-xs font-semibold text-[#7a5a42]">
+                  Creates a Gmail draft only. Sending still happens from Gmail for now.
+                </p>
                 <button
                   className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-[#ff6b1a] px-4 text-sm font-bold text-white hover:bg-[#ff7d33] disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={!selectedThread}
-                  onClick={sendDraft}
+                  disabled={!selectedThread || draftCreating}
+                  onClick={createDraft}
                   type="button"
                 >
                   <Send size={15} />
-                  Queue reply
+                  {draftCreating ? "Creating..." : selectedThread?.gmailMessageId ? "Create Gmail draft" : "Queue reply"}
                 </button>
               </div>
+              {createdDraftId ? (
+                <div className="border-t border-[#f1d8c3] px-4 py-3">
+                  <p className="text-xs font-semibold text-[#58733d]">Draft created in Gmail: {createdDraftId}</p>
+                  <label className="mt-3 flex items-start gap-2 text-xs font-semibold leading-5 text-[#6f4a32]">
+                    <input
+                      checked={sendConfirm}
+                      className="mt-1"
+                      onChange={(event) => setSendConfirm(event.target.checked)}
+                      type="checkbox"
+                    />
+                    I reviewed this draft and want Orange OS to send it from Gmail.
+                  </label>
+                  <button
+                    className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-full bg-[#2a170d] px-4 text-xs font-bold text-white hover:bg-[#4b2f1f] disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={!sendConfirm || sendingDraft}
+                    onClick={sendConfirmedDraft}
+                    type="button"
+                  >
+                    <Send size={14} />
+                    {sendingDraft ? "Sending..." : "Send confirmed draft"}
+                  </button>
+                </div>
+              ) : null}
             </section>
           </article>
         </main>
@@ -463,30 +1052,131 @@ export function EmailClient() {
             <AssistantCard icon={Sparkles} title="AI summary">
               <p className="text-sm leading-6 text-[#6f4a32]">
                 {selectedThread
-                  ? `This synced thread is about "${selectedThread.subject}". Drafts remain local until you confirm sending.`
+                  ? `This live Gmail thread is about "${selectedThread.subject}". The reply button creates a Gmail draft for review.`
                   : "Sync Gmail to populate live message context for summaries and drafts."}
               </p>
             </AssistantCard>
 
             <AssistantCard icon={Bell} title="Follow-up">
-              <input
-                className="h-10 w-full rounded-lg border border-[#edc9ac] bg-white px-3 text-sm text-[#3b2416] outline-none focus:border-[#ff6b1a]"
-                disabled={!selectedThread}
-                onChange={(event) => setReminder(event.target.value)}
-                value={reminder}
-              />
-            </AssistantCard>
-
-            <AssistantCard icon={MailCheck} title="Read status">
-              <div className="flex items-center gap-2 text-sm font-semibold text-[#3b2416]">
-                <CheckCheck size={16} className="text-[#6f8f4e]" />
-                {selectedThread?.readStatus ?? "No message selected"}
+              <div className="grid gap-2">
+                <p className="text-sm font-semibold text-[#3b2416]">{reminder}</p>
+                <input
+                  className="h-10 w-full rounded-lg border border-[#edc9ac] bg-white px-3 text-sm text-[#3b2416] outline-none focus:border-[#ff6b1a] disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={!selectedThread || acting}
+                  onChange={(event) => setReminderAtInput(event.target.value)}
+                  type="datetime-local"
+                  value={reminderAtInput}
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    className="rounded-lg bg-[#ff6b1a] px-3 py-2 text-xs font-bold text-white hover:bg-[#ff7d33] disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={!selectedThread?.gmailMessageId || !reminderAtInput || acting}
+                    onClick={() => void saveReminder(new Date(reminderAtInput).toISOString())}
+                    type="button"
+                  >
+                    Save
+                  </button>
+                  <button
+                    className="rounded-lg border border-[#edc9ac] bg-white px-3 py-2 text-xs font-bold text-[#6f4a32] hover:bg-[#fff0df] disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={!selectedThread?.gmailMessageId || !selectedThread.reminderAt || acting}
+                    onClick={() => void saveReminder(null)}
+                    type="button"
+                  >
+                    Clear
+                  </button>
+                </div>
               </div>
             </AssistantCard>
 
-            <AssistantCard icon={CalendarDays} title="Calendar fit">
-              <div className="space-y-2 text-sm text-[#6f4a32]">
-                <p>Calendar-aware reply suggestions are next once Gmail detail sync is expanded.</p>
+            <AssistantCard icon={MailCheck} title="Read status">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-[#3b2416]">
+                  <CheckCheck size={16} className="text-[#6f8f4e]" />
+                  {selectedThread?.readStatus ?? "No message selected"}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    className="rounded-full border border-[#edc9ac] bg-white px-3 py-1.5 text-xs font-bold text-[#6f4a32] hover:bg-[#fff0df] disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={!selectedThread?.gmailMessageId || acting || !selectedThread.unread}
+                    onClick={() => void runMessageAction("markRead")}
+                    type="button"
+                  >
+                    Mark read
+                  </button>
+                  <button
+                    className="rounded-full border border-[#edc9ac] bg-white px-3 py-1.5 text-xs font-bold text-[#6f4a32] hover:bg-[#fff0df] disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={!selectedThread?.gmailMessageId || acting || selectedThread.unread}
+                    onClick={() => void runMessageAction("markUnread")}
+                    type="button"
+                  >
+                    Mark unread
+                  </button>
+                </div>
+              </div>
+            </AssistantCard>
+
+            <AssistantCard icon={Tag} title="Triage actions">
+              <div className="grid gap-2">
+                {([
+                  ["Important", "OrangeOS/Important"],
+                  ["Needs Reply", "OrangeOS/Needs Reply"],
+                  ["Read Later", "OrangeOS/Read Later"],
+                  ["News", "OrangeOS/News"],
+                  ["Tools", "OrangeOS/Tools"],
+                ] as Array<[string, EmailActionLabel]>).map(([label, value]) => (
+                  <button
+                    className="rounded-lg border border-[#edc9ac] bg-white px-3 py-2 text-left text-xs font-bold text-[#6f4a32] hover:bg-[#fff0df] disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={!selectedThread?.gmailMessageId || acting}
+                    key={value}
+                    onClick={() => void runMessageAction("label", value)}
+                    type="button"
+                  >
+                    {label}
+                  </button>
+                ))}
+                <label className="grid gap-1 text-xs font-bold text-[#6f4a32]">
+                  Snooze until
+                  <input
+                    className="h-10 rounded-lg border border-[#edc9ac] bg-white px-3 text-sm font-semibold text-[#3b2416] outline-none focus:border-[#ff6b1a] disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={!selectedThread?.gmailMessageId || acting}
+                    onChange={(event) => setSnoozeUntilInput(event.target.value)}
+                    type="datetime-local"
+                    value={snoozeUntilInput}
+                  />
+                </label>
+                <button
+                  className="rounded-lg border border-[#edc9ac] bg-[#fff0df] px-3 py-2 text-left text-xs font-bold text-[#df5a12] hover:bg-[#ffe0c2] disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={!selectedThread?.gmailMessageId || !snoozeUntilInput || acting}
+                  onClick={() => void runMessageAction("snooze")}
+                  type="button"
+                >
+                  Snooze out of Inbox
+                </button>
+              </div>
+            </AssistantCard>
+
+            <AssistantCard icon={RefreshCcw} title="Mail health">
+              <div className="grid gap-3 text-sm text-[#6f4a32]">
+                <div className="grid grid-cols-2 gap-2">
+                  <StatusPill label="Due" value={emailStatus?.dueFollowUps ?? 0} />
+                  <StatusPill label="Snoozed" value={emailStatus?.snoozed ?? 0} />
+                  <StatusPill label="Wakeups" value={emailStatus?.dueSnoozed ?? 0} />
+                  <StatusPill label="Scheduled" value={emailStatus?.scheduledFollowUps ?? 0} />
+                </div>
+                {emailStatus?.recentRuns?.[0] ? (
+                  <div className="rounded-lg border border-[#edc9ac] bg-white px-3 py-2">
+                    <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#a97958]">Latest sync</p>
+                    <p className="mt-1 font-semibold text-[#3b2416]">
+                      {emailStatus.recentRuns[0].status} · {emailStatus.recentRuns[0].gmail_count} Gmail
+                    </p>
+                    <p className="mt-1 text-xs text-[#8a6a52]">
+                      {formatMailTime(emailStatus.recentRuns[0].completed_at ?? emailStatus.recentRuns[0].started_at)}
+                    </p>
+                    {emailStatus.recentRuns[0].error ? (
+                      <p className="mt-2 text-xs font-semibold text-[#b9470f]">{emailStatus.recentRuns[0].error}</p>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </AssistantCard>
 
@@ -603,5 +1293,14 @@ function AssistantCard({
       </div>
       {children}
     </section>
+  );
+}
+
+function StatusPill({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border border-[#edc9ac] bg-white px-3 py-2">
+      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#a97958]">{label}</p>
+      <p className="mt-1 text-lg font-bold text-[#3b2416]">{value}</p>
+    </div>
   );
 }

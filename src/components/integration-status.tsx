@@ -7,6 +7,12 @@ type StatusResponse = {
   google: {
     connected: boolean;
     accountEmail?: string | null;
+    accounts?: Array<{
+      id: string;
+      account_email: string | null;
+      display_name: string | null;
+      is_primary: boolean;
+    }>;
     reason?: string;
     updatedAt?: string | null;
   };
@@ -43,6 +49,7 @@ export function IntegrationStatus({ onSynced }: IntegrationStatusProps) {
   }, []);
 
   const connected = status?.google.connected;
+  const accountCount = status?.google.accounts?.length ?? 0;
 
   async function syncWorkspace() {
     if (!connected) {
@@ -91,7 +98,9 @@ export function IntegrationStatus({ onSynced }: IntegrationStatusProps) {
             <p className="font-semibold">Google workspace</p>
             <p className="mt-1 line-clamp-2 text-sm leading-5 text-[var(--muted)]">
               {connected
-                ? status?.google.accountEmail ?? "Connected"
+                ? accountCount > 1
+                  ? `${accountCount} Google accounts connected`
+                  : status?.google.accountEmail ?? "Connected"
                 : status?.google.reason ?? "Connect Google to sync Gmail and Calendar."}
             </p>
           </div>
@@ -121,6 +130,12 @@ export function IntegrationStatus({ onSynced }: IntegrationStatusProps) {
           {syncing ? "Syncing..." : "Sync now"}
         </button>
       ) : null}
+      <a
+        className="ml-2 mt-3 inline-flex h-8 items-center justify-center gap-2 rounded-full bg-white px-3 text-xs font-semibold text-[var(--muted)]"
+        href="/api/integrations/google/connect?next=/"
+      >
+        Connect account
+      </a>
       {message ? <p className="mt-2 text-sm leading-5 text-[var(--muted)]">{message}</p> : null}
     </div>
   );

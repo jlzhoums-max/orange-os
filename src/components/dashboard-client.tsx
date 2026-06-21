@@ -29,6 +29,7 @@ import {
   type CalendarItem,
   type MarketItem,
 } from "@/lib/dashboard-data";
+import type { DashboardLayoutItem, DashboardModuleId } from "@/lib/assistant/modules";
 
 function getDayPart(date: Date): DayPart {
   const hour = date.getHours();
@@ -114,6 +115,13 @@ type LiveDashboardData = {
   refreshedAt: string;
 };
 
+type CalendarEventCreatedDetail = {
+  title: string;
+  startsAt: string;
+  endsAt: string;
+  location: string;
+};
+
 type AiBrief = {
   headline: string;
   narrative: string;
@@ -142,6 +150,16 @@ const marketNames: Record<string, string> = {
 
 const autoSyncStorageKey = "orange-os-last-auto-sync";
 const autoSyncCooldownMs = 5 * 60 * 1000;
+const defaultHomeLayout: DashboardLayoutItem[] = [
+  { id: "hero", visible: true },
+  { id: "quick_capture", visible: true },
+  { id: "focus", visible: true },
+  { id: "inbox", visible: true },
+  { id: "calendar", visible: true },
+  { id: "market", visible: true },
+  { id: "ai_brief", visible: true },
+  { id: "data_connections", visible: true },
+];
 
 function formatEventTime(value: string | null) {
   if (!value) {
@@ -185,7 +203,13 @@ export function DashboardClient({ initialTimestamp }: DashboardClientProps) {
   const [aiBrief, setAiBrief] = useState<AiBrief | null>(null);
   const [briefLoading, setBriefLoading] = useState(false);
   const [briefError, setBriefError] = useState<string | null>(null);
+  const [homeLayout, setHomeLayout] = useState<DashboardLayoutItem[]>(defaultHomeLayout);
   const dayPart = useMemo(() => getDayPart(now), [now]);
+  const layoutRank = useMemo(() => new Map(homeLayout.map((item, index) => [item.id, index])), [homeLayout]);
+
+  const isModuleVisible = useCallback((id: DashboardModuleId) => {
+    return homeLayout.find((item) => item.id === id)?.visible !== false;
+  }, [homeLayout]);
 
   const loadLiveData = useCallback(async () => {
     setDataLoading(true);
@@ -236,6 +260,16 @@ export function DashboardClient({ initialTimestamp }: DashboardClientProps) {
     if (response.ok) {
       const payload = (await response.json()) as { brief: AiBrief | null };
       setAiBrief(payload.brief);
+    }
+  }, []);
+
+  const loadAssistantLayout = useCallback(async () => {
+    const response = await fetch("/api/assistant/state");
+    if (response.ok) {
+      const payload = (await response.json()) as { homeLayout?: DashboardLayoutItem[] };
+      if (payload.homeLayout?.length) {
+        setHomeLayout(payload.homeLayout);
+      }
     }
   }, []);
 
@@ -322,6 +356,7 @@ export function DashboardClient({ initialTimestamp }: DashboardClientProps) {
     const loadTimer = window.setTimeout(() => {
       void loadLiveData();
       void loadAiBrief();
+      void loadAssistantLayout();
     }, 0);
 
     const syncTimer = window.setTimeout(() => {
@@ -338,12 +373,75 @@ export function DashboardClient({ initialTimestamp }: DashboardClientProps) {
       window.clearTimeout(loadTimer);
       window.clearTimeout(syncTimer);
     };
-  }, [loadAiBrief, loadLiveData, syncDailyData]);
+  }, [loadAiBrief, loadAssistantLayout, loadLiveData, syncDailyData]);
+
+  useEffect(() => {
+    function handleLayoutUpdated(event: Event) {
+      const customEvent = event as CustomEvent<DashboardLayoutItem[]>;
+      if (Array.isArray(customEvent.detail)) {
+        setHomeLayout(customEvent.detail);
+      } else {
+        void loadAssistantLayout();
+      }
+    }
+
+    window.addEventListener("orange-os-layout-updated", handleLayoutUpdated);
+    return () => window.removeEventListener("orange-os-layout-updated", handleLayoutUpdated);
+  }, [loadAssistantLayout]);
+
+  useEffect(() => {
+    function handleCalendarEventCreated(event: Event) {
+      const detail = (event as CustomEvent<CalendarEventCreatedDetail>).detail;
+
+      if (!detail?.title || !detail.startsAt) {
+        return;
+      }
+
+      setLiveData((current) => {
+        const nextEvent = {
+          title: detail.title,
+          starts_at: detail.startsAt,
+          ends_at: detail.endsAt,
+          location: detail.location,
+        };
+
+        if (!current) {
+          return {
+            emails: [],
+            events: [nextEvent],
+            quotes: [],
+            refreshedAt: new Date().toISOString(),
+          };
+        }
+
+        return {
+          ...current,
+          events: [nextEvent, ...current.events].sort((first, second) =>
+            String(first.starts_at ?? "").localeCompare(String(second.starts_at ?? "")),
+          ),
+        };
+      });
+    }
+
+    window.addEventListener("orange-os-calendar-event-created", handleCalendarEventCreated);
+    window.addEventListener("orange-os-local-calendar-event-create", handleCalendarEventCreated);
+    return () => {
+      window.removeEventListener("orange-os-calendar-event-created", handleCalendarEventCreated);
+      window.removeEventListener("orange-os-local-calendar-event-create", handleCalendarEventCreated);
+    };
+  }, []);
+
+  const workModules = (["inbox", "calendar", "market"] as DashboardModuleId[])
+    .filter(isModuleVisible)
+    .sort((first, second) => (layoutRank.get(first) ?? 0) - (layoutRank.get(second) ?? 0));
+  const insightModules = (["ai_brief", "data_connections"] as DashboardModuleId[])
+    .filter(isModuleVisible)
+    .sort((first, second) => (layoutRank.get(first) ?? 0) - (layoutRank.get(second) ?? 0));
 
   return (
     <AppChrome active="Home">
       <div className="mx-auto flex max-w-[1440px] flex-col gap-4">
-        <section className="grid gap-4 xl:grid-cols-[1fr_21rem]">
+        <section className={`grid gap-4 ${isModuleVisible("quick_capture") ? "xl:grid-cols-[1fr_21rem]" : ""}`}>
           <div className="os-card p-4 sm:p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
@@ -398,76 +496,94 @@ export function DashboardClient({ initialTimestamp }: DashboardClientProps) {
               ))}
             </div>
 
-            <div className="mt-3 grid gap-1.5 md:grid-cols-3">
-              {(aiBrief?.focus_items?.length ? aiBrief.focus_items : briefItems).slice(0, 3).map((item) => (
-                <div
-                  key={item.label}
-                  className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 md:block md:py-2.5 ${toneClass(item.tone)}`}
-                >
-                  <p className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.08em]">{item.label}</p>
-                  <p className="line-clamp-1 text-right text-sm font-semibold leading-5 md:mt-1 md:line-clamp-2 md:text-left">{item.value}</p>
-                </div>
-              ))}
-            </div>
+            {isModuleVisible("focus") ? (
+              <div className="mt-3 grid gap-1.5 md:grid-cols-3">
+                {(aiBrief?.focus_items?.length ? aiBrief.focus_items : briefItems).slice(0, 3).map((item) => (
+                  <div
+                    key={item.label}
+                    className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 md:block md:py-2.5 ${toneClass(item.tone)}`}
+                  >
+                    <p className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.08em]">{item.label}</p>
+                    <p className="line-clamp-1 text-right text-sm font-semibold leading-5 md:mt-1 md:line-clamp-2 md:text-left">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
 
-          <QuickCaptureCard />
+          {isModuleVisible("quick_capture") ? <QuickCaptureCard /> : null}
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-3">
-          <Panel title="Priority inbox" icon={Mail}>
-            <div className="space-y-3">
-              {liveInboxItems.map((item) => (
-                <article key={item.subject} className="rounded-md border border-[var(--line)] p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium">{item.from}</p>
-                      <p className="mt-1 text-sm text-[var(--muted)]">{item.subject}</p>
+        {workModules.length ? (
+          <section className="grid gap-4 xl:grid-cols-3">
+            {workModules.map((moduleId) => {
+              if (moduleId === "inbox") {
+                return (
+                  <Panel title="Priority inbox" icon={Mail} key={moduleId}>
+                    <div className="space-y-3">
+                      {liveInboxItems.map((item) => (
+                        <article key={item.subject} className="rounded-md border border-[var(--line)] p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-medium">{item.from}</p>
+                              <p className="mt-1 text-sm text-[var(--muted)]">{item.subject}</p>
+                            </div>
+                            <span className={riskClass(item.urgency)}>{item.urgency}</span>
+                          </div>
+                          <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{item.summary}</p>
+                        </article>
+                      ))}
                     </div>
-                    <span className={riskClass(item.urgency)}>{item.urgency}</span>
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{item.summary}</p>
-                </article>
-              ))}
-            </div>
-          </Panel>
+                  </Panel>
+                );
+              }
 
-          <Panel title="Calendar runway" icon={Clock}>
-            <div className="space-y-3">
-              {liveCalendarItems.map((event) => (
-                <article key={event.title} className="grid grid-cols-[74px_1fr] gap-3 rounded-md border border-[var(--line)] p-3">
-                  <p className="font-mono text-sm text-[var(--accent-ink)]">{event.time}</p>
-                  <div>
-                    <p className="font-medium">{event.title}</p>
-                    <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{event.context}</p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </Panel>
+              if (moduleId === "calendar") {
+                return (
+                  <Panel title="Calendar runway" icon={Clock} key={moduleId}>
+                    <div className="space-y-3">
+                      {liveCalendarItems.map((event) => (
+                        <article key={event.title} className="grid grid-cols-[74px_1fr] gap-3 rounded-md border border-[var(--line)] p-3">
+                          <p className="font-mono text-sm text-[var(--accent-ink)]">{event.time}</p>
+                          <div>
+                            <p className="font-medium">{event.title}</p>
+                            <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{event.context}</p>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </Panel>
+                );
+              }
 
-          <Panel title="Market watch" icon={Activity}>
-            <div className="space-y-3">
-              {liveMarketItems.map((item) => (
-                <article key={item.symbol} className="flex items-center justify-between rounded-md border border-[var(--line)] p-3">
-                  <div>
-                    <p className="font-mono font-semibold">{item.symbol}</p>
-                    <p className="mt-1 text-sm text-[var(--muted)]">{item.name}</p>
+              return (
+                <Panel title="Market watch" icon={Activity} key={moduleId}>
+                  <div className="space-y-3">
+                    {liveMarketItems.map((item) => (
+                      <article key={item.symbol} className="flex items-center justify-between rounded-md border border-[var(--line)] p-3">
+                        <div>
+                          <p className="font-mono font-semibold">{item.symbol}</p>
+                          <p className="mt-1 text-sm text-[var(--muted)]">{item.name}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">{item.price}</p>
+                          <p className={item.direction === "up" ? "text-sm text-emerald-700" : "text-sm text-red-700"}>
+                            {item.change}
+                          </p>
+                        </div>
+                      </article>
+                    ))}
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium">{item.price}</p>
-                    <p className={item.direction === "up" ? "text-sm text-emerald-700" : "text-sm text-red-700"}>
-                      {item.change}
-                    </p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </Panel>
-        </section>
+                </Panel>
+              );
+            })}
+          </section>
+        ) : null}
 
-        <section className="grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">
-          <div className="os-card p-4 sm:p-5">
+        {insightModules.length ? (
+          <section className="grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">
+            {insightModules.map((moduleId) => moduleId === "ai_brief" ? (
+          <div className="os-card p-4 sm:p-5" key={moduleId}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
@@ -524,8 +640,8 @@ export function DashboardClient({ initialTimestamp }: DashboardClientProps) {
               </div>
             ) : null}
           </div>
-
-          <div className="os-card p-4 sm:p-5">
+            ) : (
+          <div className="os-card p-4 sm:p-5" key={moduleId}>
             <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
               <DatabaseZap size={18} />
               Data connections
@@ -555,7 +671,9 @@ export function DashboardClient({ initialTimestamp }: DashboardClientProps) {
               <IntegrationStatus onSynced={loadLiveData} />
             </div>
           </div>
-        </section>
+            ))}
+          </section>
+        ) : null}
 
       </div>
     </AppChrome>

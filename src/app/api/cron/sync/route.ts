@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
+import { runDailyReflectionForUser } from "@/lib/assistant/reflection";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { separateEmailsForUser } from "@/lib/google/separator";
+import { restoreDueSnoozedEmailsForUser } from "@/lib/google/snooze";
 import { syncWorkspaceForUser } from "@/lib/google/sync";
 
-const centralSyncHours = new Set([7, 12, 17, 21]);
+const centralSyncHours = new Set([0, 1, 7, 12, 17, 21]);
+const centralReflectionHours = new Set([0, 1]);
 
 function centralHour(date: Date) {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -43,10 +47,29 @@ export async function GET(request: Request) {
   const results = await Promise.allSettled(
     userIds.map((userId) => syncWorkspaceForUser(userId, force ? "cron-force" : "cron")),
   );
+  const shouldSeparate = force || hour === 7 || centralReflectionHours.has(hour);
+  const separatorResults = shouldSeparate
+    ? await Promise.allSettled(userIds.map((userId) => separateEmailsForUser(userId)))
+    : [];
+  const restoredResults = await Promise.allSettled(userIds.map((userId) => restoreDueSnoozedEmailsForUser(userId, now)));
+  const shouldReflect = force || centralReflectionHours.has(hour);
+  const reflectionResults = shouldReflect
+    ? await Promise.allSettled(userIds.map((userId) => runDailyReflectionForUser(userId, { force })))
+    : [];
 
   return NextResponse.json({
     syncedUsers: results.filter((result) => result.status === "fulfilled").length,
     failedUsers: results.filter((result) => result.status === "rejected").length,
+    separatedUsers: separatorResults.filter((result) => result.status === "fulfilled").length,
+    failedSeparations: separatorResults.filter((result) => result.status === "rejected").length,
+    reflectedUsers: reflectionResults.filter((result) => result.status === "fulfilled" && result.value.created).length,
+    skippedReflections: reflectionResults.filter((result) => result.status === "fulfilled" && !result.value.created).length,
+    failedReflections: reflectionResults.filter((result) => result.status === "rejected").length,
+    restoredSnoozed: restoredResults.reduce(
+      (total, result) => total + (result.status === "fulfilled" ? result.value : 0),
+      0,
+    ),
+    failedSnoozeRestores: restoredResults.filter((result) => result.status === "rejected").length,
     centralHour: hour,
   });
 }

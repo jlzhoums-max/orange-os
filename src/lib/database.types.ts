@@ -152,7 +152,11 @@ export type Database = {
           id: string;
           user_id: string;
           provider: string;
+          provider_account_id: string;
           account_email: string | null;
+          display_name: string | null;
+          avatar_url: string | null;
+          is_primary: boolean;
           scopes: string[];
           access_token: string | null;
           refresh_token: string | null;
@@ -164,7 +168,11 @@ export type Database = {
           id?: string;
           user_id: string;
           provider: string;
+          provider_account_id?: string;
           account_email?: string | null;
+          display_name?: string | null;
+          avatar_url?: string | null;
+          is_primary?: boolean;
           scopes?: string[];
           access_token?: string | null;
           refresh_token?: string | null;
@@ -173,7 +181,11 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          provider_account_id?: string;
           account_email?: string | null;
+          display_name?: string | null;
+          avatar_url?: string | null;
+          is_primary?: boolean;
           scopes?: string[];
           access_token?: string | null;
           refresh_token?: string | null;
@@ -185,6 +197,7 @@ export type Database = {
         Row: {
           id: string;
           user_id: string;
+          connected_account_id: string | null;
           gmail_message_id: string;
           thread_id: string | null;
           sender: string | null;
@@ -198,6 +211,7 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
+          connected_account_id?: string | null;
           gmail_message_id: string;
           thread_id?: string | null;
           sender?: string | null;
@@ -209,6 +223,7 @@ export type Database = {
           created_at?: string;
         };
         Update: {
+          connected_account_id?: string | null;
           sender?: string | null;
           subject?: string | null;
           snippet?: string | null;
@@ -220,6 +235,7 @@ export type Database = {
         Row: {
           id: string;
           user_id: string;
+          connected_account_id: string | null;
           google_event_id: string;
           calendar_id: string;
           title: string | null;
@@ -227,12 +243,22 @@ export type Database = {
           ends_at: string | null;
           location: string | null;
           attendees: Json;
+          status: string | null;
+          html_link: string | null;
+          creator: Json | null;
+          organizer: Json | null;
+          recurring_event_id: string | null;
+          all_day: boolean;
+          time_zone: string | null;
+          google_updated_at: string | null;
           raw: Json;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
           user_id: string;
+          connected_account_id?: string | null;
           google_event_id: string;
           calendar_id?: string;
           title?: string | null;
@@ -240,16 +266,83 @@ export type Database = {
           ends_at?: string | null;
           location?: string | null;
           attendees?: Json;
+          status?: string | null;
+          html_link?: string | null;
+          creator?: Json | null;
+          organizer?: Json | null;
+          recurring_event_id?: string | null;
+          all_day?: boolean;
+          time_zone?: string | null;
+          google_updated_at?: string | null;
           raw?: Json;
           created_at?: string;
+          updated_at?: string;
         };
         Update: {
+          connected_account_id?: string | null;
           title?: string | null;
           starts_at?: string | null;
           ends_at?: string | null;
           location?: string | null;
           attendees?: Json;
+          status?: string | null;
+          html_link?: string | null;
+          creator?: Json | null;
+          organizer?: Json | null;
+          recurring_event_id?: string | null;
+          all_day?: boolean;
+          time_zone?: string | null;
+          google_updated_at?: string | null;
           raw?: Json;
+          updated_at?: string;
+        };
+      };
+      synced_calendars: {
+        Row: {
+          id: string;
+          user_id: string;
+          connected_account_id: string;
+          google_calendar_id: string;
+          summary: string | null;
+          description: string | null;
+          time_zone: string | null;
+          background_color: string | null;
+          foreground_color: string | null;
+          access_role: string | null;
+          is_primary: boolean;
+          selected: boolean;
+          raw: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          connected_account_id: string;
+          google_calendar_id: string;
+          summary?: string | null;
+          description?: string | null;
+          time_zone?: string | null;
+          background_color?: string | null;
+          foreground_color?: string | null;
+          access_role?: string | null;
+          is_primary?: boolean;
+          selected?: boolean;
+          raw?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          summary?: string | null;
+          description?: string | null;
+          time_zone?: string | null;
+          background_color?: string | null;
+          foreground_color?: string | null;
+          access_role?: string | null;
+          is_primary?: boolean;
+          selected?: boolean;
+          raw?: Json;
+          updated_at?: string;
         };
       };
       market_watchlist: {
@@ -330,6 +423,153 @@ export type Database = {
           suggested_tasks?: Json;
           reply_drafts?: Json;
           project_updates?: Json;
+        };
+      };
+      assistant_preferences: {
+        Row: {
+          user_id: string;
+          assistant_name: string;
+          default_provider: string;
+          default_model_mode: string;
+          developer_mode_enabled: boolean;
+          memory: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          assistant_name?: string;
+          default_provider?: string;
+          default_model_mode?: string;
+          developer_mode_enabled?: boolean;
+          memory?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          assistant_name?: string;
+          default_provider?: string;
+          default_model_mode?: string;
+          developer_mode_enabled?: boolean;
+          memory?: Json;
+          updated_at?: string;
+        };
+      };
+      assistant_layouts: {
+        Row: {
+          id: string;
+          user_id: string;
+          surface: string;
+          modules: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          surface: string;
+          modules?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          modules?: Json;
+          updated_at?: string;
+        };
+      };
+      assistant_messages: {
+        Row: {
+          id: string;
+          user_id: string;
+          role: string;
+          content: string;
+          provider: string | null;
+          model: string | null;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          role: string;
+          content: string;
+          provider?: string | null;
+          model?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          content?: string;
+          metadata?: Json;
+        };
+      };
+      assistant_tasks: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          reason: string | null;
+          status: string;
+          created_at: string;
+          completed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title: string;
+          reason?: string | null;
+          status?: string;
+          created_at?: string;
+          completed_at?: string | null;
+        };
+        Update: {
+          title?: string;
+          reason?: string | null;
+          status?: string;
+          completed_at?: string | null;
+        };
+      };
+      assistant_reflections: {
+        Row: {
+          id: string;
+          user_id: string;
+          reflection_date: string;
+          summary: string;
+          learned_preferences: Json;
+          command_patterns: Json;
+          shortcut_candidates: Json;
+          code_notes: Json;
+          unresolved_questions: Json;
+          provider: string | null;
+          model: string | null;
+          token_usage: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          reflection_date: string;
+          summary: string;
+          learned_preferences?: Json;
+          command_patterns?: Json;
+          shortcut_candidates?: Json;
+          code_notes?: Json;
+          unresolved_questions?: Json;
+          provider?: string | null;
+          model?: string | null;
+          token_usage?: Json;
+          created_at?: string;
+        };
+        Update: {
+          summary?: string;
+          learned_preferences?: Json;
+          command_patterns?: Json;
+          shortcut_candidates?: Json;
+          code_notes?: Json;
+          unresolved_questions?: Json;
+          provider?: string | null;
+          model?: string | null;
+          token_usage?: Json;
         };
       };
       ledger_expenses: {
@@ -439,6 +679,7 @@ export type Database = {
         Row: {
           id: string;
           user_id: string | null;
+          connected_account_id: string | null;
           trigger: string;
           status: string;
           gmail_count: number;
@@ -451,6 +692,7 @@ export type Database = {
         Insert: {
           id?: string;
           user_id?: string | null;
+          connected_account_id?: string | null;
           trigger: string;
           status?: string;
           gmail_count?: number;
@@ -461,6 +703,7 @@ export type Database = {
           completed_at?: string | null;
         };
         Update: {
+          connected_account_id?: string | null;
           status?: string;
           gmail_count?: number;
           calendar_count?: number;

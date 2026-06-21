@@ -21,6 +21,7 @@ type TodoView = "inbox" | "today" | "upcoming" | "all";
 
 type TodoTask = {
   id: string;
+  assistantTaskId?: string;
   title: string;
   notes: string;
   project: string;
@@ -29,6 +30,7 @@ type TodoTask = {
   labels: string[];
   completed: boolean;
   createdAt: string;
+  source?: "local" | "assistant";
 };
 
 type TodoForm = {
@@ -98,6 +100,21 @@ const emptyForm: TodoForm = {
   labels: "",
 };
 
+type AssistantTaskRow = {
+  id: string;
+  title: string;
+  reason: string | null;
+  status: string;
+  created_at: string;
+  completed_at: string | null;
+};
+
+type LocalTaskEvent = {
+  title?: string;
+  notes?: string;
+  labels?: string[];
+};
+
 function createId() {
   return `todo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
@@ -154,8 +171,24 @@ function taskMatchesView(task: TodoTask, view: TodoView, selectedProject: string
   return true;
 }
 
+function assistantRowToTodo(row: AssistantTaskRow): TodoTask {
+  return {
+    id: `assistant-${row.id}`,
+    assistantTaskId: row.id,
+    title: row.title,
+    notes: row.reason ?? "",
+    project: "Inbox",
+    dueDate: row.created_at.slice(0, 10),
+    priority: 2,
+    labels: ["cheng-zi"],
+    completed: row.status === "completed",
+    createdAt: row.created_at,
+    source: "assistant",
+  };
+}
+
 export function TodoTool() {
-  const [tasks, setTasks] = useState<TodoTask[]>(() => {
+  const [localTasks, setLocalTasks] = useState<TodoTask[]>(() => {
     if (typeof window === "undefined") {
       return seedTasks;
     }
@@ -174,16 +207,85 @@ export function TodoTool() {
       return seedTasks;
     }
   });
+  const [assistantTasks, setAssistantTasks] = useState<TodoTask[]>([]);
   const [form, setForm] = useState<TodoForm>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [view, setView] = useState<TodoView>("today");
   const [selectedProject, setSelectedProject] = useState("All");
   const [query, setQuery] = useState("");
   const [showCompleted, setShowCompleted] = useState(false);
+  const [assistantStatus, setAssistantStatus] = useState<string | null>(null);
+  const tasks = useMemo(() => [...assistantTasks, ...localTasks], [assistantTasks, localTasks]);
 
   useEffect(() => {
-    window.localStorage.setItem(storageKey, JSON.stringify(tasks));
-  }, [tasks]);
+    window.localStorage.setItem(storageKey, JSON.stringify(localTasks));
+  }, [localTasks]);
+
+  useEffect(() => {
+    function handleLocalTask(event: Event) {
+      const detail = (event as CustomEvent<LocalTaskEvent>).detail;
+      const title = detail?.title?.trim();
+
+      if (!title) {
+        return;
+      }
+
+      setLocalTasks((current) => [
+        {
+          id: createId(),
+          title,
+          notes: detail.notes?.trim() ?? "",
+          project: "Inbox",
+          dueDate: todayKey(),
+          priority: 2,
+          labels: Array.isArray(detail.labels) ? detail.labels : ["cheng-zi"],
+          completed: false,
+          createdAt: new Date().toISOString(),
+          source: "assistant",
+        },
+        ...current,
+      ]);
+      setView("today");
+      setShowCompleted(false);
+      setSelectedProject("All");
+    }
+
+    window.addEventListener("orange-os-local-task-create", handleLocalTask);
+    return () => window.removeEventListener("orange-os-local-task-create", handleLocalTask);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadAssistantTasks() {
+      try {
+        const response = await fetch("/api/assistant/tasks");
+        const payload = (await response.json()) as { tasks?: AssistantTaskRow[]; error?: string };
+
+        if (!active) {
+          return;
+        }
+
+        if (!response.ok) {
+          setAssistantStatus(payload.error === "Unauthorized" ? "Sign in to sync Chéng zǐ tasks." : payload.error ?? "Could not load Chéng zǐ tasks.");
+          return;
+        }
+
+        setAssistantTasks((payload.tasks ?? []).map(assistantRowToTodo));
+        setAssistantStatus(null);
+      } catch {
+        if (active) {
+          setAssistantStatus("Could not load Chéng zǐ tasks.");
+        }
+      }
+    }
+
+    void loadAssistantTasks();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const visibleTasks = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -243,13 +345,23 @@ export function TodoTool() {
       labels: form.labels.split(",").map((label) => label.trim()).filter(Boolean),
       completed: editingId ? tasks.find((task) => task.id === editingId)?.completed ?? false : false,
       createdAt: editingId ? tasks.find((task) => task.id === editingId)?.createdAt ?? new Date().toISOString() : new Date().toISOString(),
+      source: editingId ? tasks.find((task) => task.id === editingId)?.source ?? "local" : "local",
+      assistantTaskId: editingId ? tasks.find((task) => task.id === editingId)?.assistantTaskId : undefined,
     };
 
-    setTasks((current) =>
-      editingId
-        ? current.map((task) => (task.id === editingId ? nextTask : task))
-        : [nextTask, ...current],
-    );
+    if (editingId && nextTask.assistantTaskId) {
+      setAssistantTasks((current) => current.map((task) => (task.id === editingId ? nextTask : task)));
+      void syncAssistantTask(nextTask, {
+        title: nextTask.title,
+        reason: nextTask.notes,
+      });
+    } else {
+      setLocalTasks((current) =>
+        editingId
+          ? current.map((task) => (task.id === editingId ? nextTask : task))
+          : [nextTask, ...current],
+      );
+    }
     setForm(emptyForm);
     setEditingId(null);
   }
@@ -267,17 +379,84 @@ export function TodoTool() {
   }
 
   function toggleTask(taskId: string) {
-    setTasks((current) =>
-      current.map((task) => (task.id === taskId ? { ...task, completed: !task.completed } : task)),
+    const task = tasks.find((item) => item.id === taskId);
+    if (!task) {
+      return;
+    }
+
+    const nextTask = { ...task, completed: !task.completed };
+
+    if (task.assistantTaskId) {
+      setAssistantTasks((current) => current.map((item) => (item.id === taskId ? nextTask : item)));
+      void syncAssistantTask(nextTask, { status: nextTask.completed ? "completed" : "open" });
+      return;
+    }
+
+    setLocalTasks((current) =>
+      current.map((item) => (item.id === taskId ? nextTask : item)),
     );
   }
 
   function deleteTask(taskId: string) {
-    setTasks((current) => current.filter((task) => task.id !== taskId));
+    const task = tasks.find((item) => item.id === taskId);
+
+    if (task?.assistantTaskId) {
+      setAssistantTasks((current) => current.filter((item) => item.id !== taskId));
+      void deleteAssistantTask(task.assistantTaskId);
+    } else {
+      setLocalTasks((current) => current.filter((item) => item.id !== taskId));
+    }
 
     if (editingId === taskId) {
       setEditingId(null);
       setForm(emptyForm);
+    }
+  }
+
+  async function syncAssistantTask(task: TodoTask, patch: { title?: string; reason?: string; status?: "open" | "completed" }) {
+    if (!task.assistantTaskId) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/assistant/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: task.assistantTaskId,
+          ...patch,
+        }),
+      });
+      const payload = (await response.json()) as { task?: AssistantTaskRow; error?: string };
+
+      if (!response.ok || !payload.task) {
+        throw new Error(payload.error ?? "Could not sync Chéng zǐ task.");
+      }
+
+      const syncedTask = payload.task;
+      setAssistantTasks((current) => current.map((item) => (item.assistantTaskId === syncedTask.id ? assistantRowToTodo(syncedTask) : item)));
+      setAssistantStatus(null);
+    } catch (error) {
+      setAssistantStatus(error instanceof Error ? error.message : "Could not sync Chéng zǐ task.");
+    }
+  }
+
+  async function deleteAssistantTask(taskId: string) {
+    try {
+      const response = await fetch("/api/assistant/tasks", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: taskId }),
+      });
+      const payload = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Could not delete Chéng zǐ task.");
+      }
+
+      setAssistantStatus(null);
+    } catch (error) {
+      setAssistantStatus(error instanceof Error ? error.message : "Could not delete Chéng zǐ task.");
     }
   }
 
@@ -302,6 +481,12 @@ export function TodoTool() {
           <ViewButton active={view === "all" && !showCompleted} count={counts.all} icon={Hash} label="All tasks" onClick={() => { setView("all"); setShowCompleted(false); }} />
           <ViewButton active={showCompleted} count={counts.completed} icon={CheckCircle2} label="Completed" onClick={() => setShowCompleted(true)} />
         </nav>
+
+        <div className="mt-4 rounded-xl border border-[var(--line)] bg-white/58 px-3 py-2 text-xs leading-5 text-[var(--muted)]">
+          <span className="font-semibold text-[var(--accent)]">Chéng zǐ</span>
+          <span> tasks appear in Inbox after you confirm them in chat.</span>
+          {assistantStatus ? <p className="mt-1 text-[var(--muted-soft)]">{assistantStatus}</p> : null}
+        </div>
 
         <div className="mt-6">
           <p className="os-label px-3">Projects</p>
@@ -442,7 +627,7 @@ export function TodoTool() {
                         </span>
                         {task.labels.map((label) => (
                           <span className="rounded-full bg-[var(--panel-deep)] px-2.5 py-1" key={label}>
-                            {label}
+                            {label === "cheng-zi" ? "Chéng zǐ" : label}
                           </span>
                         ))}
                       </div>

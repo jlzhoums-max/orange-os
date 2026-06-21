@@ -7,10 +7,11 @@ import { createClient } from "@/lib/supabase/client";
 import { googleIntegrationScopes } from "@/lib/google/scopes";
 
 type AuthPanelProps = {
+  error?: string;
   mode: "login" | "missing-env";
 };
 
-export function AuthPanel({ mode }: AuthPanelProps) {
+export function AuthPanel({ error, mode }: AuthPanelProps) {
   const [loading, setLoading] = useState(false);
 
   async function signInWithGoogle() {
@@ -93,15 +94,22 @@ export function AuthPanel({ mode }: AuthPanelProps) {
                 to `.env.local`, then restart the dev server.
               </div>
             ) : (
-              <button
-                className="os-primary-button mt-7 flex h-13 min-h-13 w-full items-center justify-center gap-2 px-5 text-sm font-semibold"
-                disabled={loading}
-                onClick={signInWithGoogle}
-                type="button"
-              >
-                {loading ? "Opening Google..." : "Continue with Google"}
-                <ArrowRight size={17} />
-              </button>
+              <>
+                {error === "not-allowed" ? (
+                  <div className="mt-6 rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                    This Orange OS workspace is private. Sign in with an allowed Google account.
+                  </div>
+                ) : null}
+                <button
+                  className="os-primary-button mt-7 flex h-13 min-h-13 w-full items-center justify-center gap-2 px-5 text-sm font-semibold"
+                  disabled={loading}
+                  onClick={signInWithGoogle}
+                  type="button"
+                >
+                  {loading ? "Opening Google..." : "Continue with Google"}
+                  <ArrowRight size={17} />
+                </button>
+              </>
             )}
           </div>
         </div>

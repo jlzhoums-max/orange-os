@@ -25,20 +25,23 @@ export async function GET() {
   }
 
   const admin = getSupabaseAdmin();
-  const { data: account } = await admin
+  const { data: accounts } = await admin
     .from("connected_accounts")
-    .select("provider, account_email, scopes, expires_at, updated_at")
+    .select("id, provider, account_email, display_name, scopes, expires_at, updated_at, is_primary")
     .eq("user_id", user.id)
     .eq("provider", "google")
-    .maybeSingle();
+    .order("is_primary", { ascending: false })
+    .order("created_at", { ascending: true });
+  const primary = accounts?.[0] ?? null;
 
   return NextResponse.json({
     google: {
-      connected: Boolean(account),
-      accountEmail: account?.account_email ?? null,
-      scopes: account?.scopes ?? [],
-      expiresAt: account?.expires_at ?? null,
-      updatedAt: account?.updated_at ?? null,
+      connected: Boolean(accounts?.length),
+      accountEmail: primary?.account_email ?? null,
+      accounts: accounts ?? [],
+      scopes: primary?.scopes ?? [],
+      expiresAt: primary?.expires_at ?? null,
+      updatedAt: primary?.updated_at ?? null,
     },
   });
 }
