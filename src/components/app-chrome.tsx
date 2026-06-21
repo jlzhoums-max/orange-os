@@ -276,9 +276,12 @@ function DockButton({
 }) {
   const Icon = item.icon;
   const hasOptions = Boolean(item.options?.length);
+  const isActive = Boolean(item.active);
   const buttonClass = `flex h-11 w-11 items-center justify-center rounded-full transition ${
-    item.active || open
+    isActive
       ? "bg-[var(--gradient-citrus)] text-white shadow-[0_10px_20px_rgba(232,75,27,0.2)]"
+      : open
+      ? "bg-[var(--panel-strong)] text-[var(--accent)]"
       : "text-[var(--muted)] hover:bg-[var(--panel-strong)] hover:text-[var(--accent)]"
   }`;
 
