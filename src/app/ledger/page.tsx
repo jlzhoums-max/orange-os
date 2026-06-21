@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, BadgeDollarSign, CalendarDays, Landmark, WalletCards } from "lucide-react";
-import { AppTopbar, BottomDock } from "@/components/app-chrome";
+import { AppChrome } from "@/components/app-chrome";
 import { LedgerTool } from "@/components/ledger-tool";
 import { hasSupabasePublicEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
@@ -17,12 +17,10 @@ export default async function LedgerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--background)]">
-      <AppTopbar />
-      <main className="min-h-screen px-4 pb-28 pt-5 sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5">
-          <header className="grid gap-5 lg:grid-cols-[1fr_0.72fr] lg:items-stretch">
-            <section className="os-card overflow-hidden border-2 p-6 sm:p-8">
+    <AppChrome active="Tools">
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-5">
+        <header className="grid gap-5 lg:grid-cols-[1fr_0.72fr] lg:items-stretch">
+            <section className="os-card os-watermark overflow-hidden p-6 sm:p-8">
               <Link
                 className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--panel-strong)] px-4 py-2 text-sm font-semibold text-[var(--muted)] hover:text-[var(--accent)]"
                 href="/"
@@ -49,7 +47,7 @@ export default async function LedgerPage() {
                 ["Weekly frame", "Pace without daily micromanagement.", CalendarDays],
                 ["Liquid wealth", "Cash and investment balances only.", Landmark],
               ].map(([title, detail, Icon]) => (
-                <div className="os-card-soft flex items-start gap-3 border-2 p-4" key={title as string}>
+                <div className="os-card-soft flex items-start gap-3 p-4" key={title as string}>
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[var(--accent)]">
                     <Icon size={18} />
                   </div>
@@ -64,8 +62,6 @@ export default async function LedgerPage() {
 
           <LedgerTool />
         </div>
-      </main>
-      <BottomDock active="Tools" />
-    </div>
+    </AppChrome>
   );
 }

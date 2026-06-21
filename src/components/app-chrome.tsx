@@ -3,14 +3,19 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Bell,
   CalendarDays,
+  ChevronDown,
+  Command,
   DatabaseZap,
   Home,
+  LayoutDashboard,
   LogOut,
   Mail,
   Menu,
+  Plus,
   RefreshCcw,
   Search,
   Settings,
@@ -29,27 +34,184 @@ type DockItem = {
   options?: Array<{ label: string; href?: string; icon: LucideIcon }>;
 };
 
-export function AppTopbar() {
+type AppChromeProps = {
+  active?: "Home" | "Tools";
+  children: React.ReactNode;
+};
+
+export function AppChrome({ active = "Home", children }: AppChromeProps) {
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center justify-between bg-[var(--background)]/88 px-5 backdrop-blur-xl">
-      <button className="text-[var(--accent)]" aria-label="Open menu" type="button">
-        <Menu size={25} />
-      </button>
-      <BrandLogo className="h-10 w-10" />
-      <button className="text-[var(--accent)]" aria-label="Notifications" type="button">
-        <Bell size={23} />
-      </button>
-      <a className="sr-only" href="/auth/signout">
-        Sign out
-      </a>
+    <div className="os-page">
+      <div className="os-shell">
+        <Sidebar active={active} />
+        <div className="min-w-0">
+          <AppTopbar />
+          <main className="os-main">{children}</main>
+        </div>
+      </div>
+      <BottomDock active={active} />
+    </div>
+  );
+}
+
+export function AppTopbar() {
+  const date = new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(new Date());
+
+  return (
+    <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[var(--background)]/82 px-4 py-3 backdrop-blur-xl lg:px-6">
+      <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4">
+        <button className="text-[var(--accent)] lg:hidden" aria-label="Open menu" type="button">
+          <Menu size={25} />
+        </button>
+
+        <label className="hidden h-12 w-full max-w-md items-center gap-3 rounded-2xl border border-[var(--line)] bg-[rgba(255,253,248,0.78)] px-4 shadow-[0_8px_22px_rgba(110,56,13,0.05)] lg:flex">
+          <Search size={20} className="text-[var(--muted)]" />
+          <input
+            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--muted-soft)]"
+            placeholder="Search anything..."
+            type="search"
+          />
+          <span className="inline-flex items-center gap-1 rounded-lg border border-[var(--line)] bg-white/70 px-2 py-1 font-mono text-xs text-[var(--muted)]">
+            <Command size={12} /> K
+          </span>
+        </label>
+
+        <BrandLogo className="h-10 w-10 lg:hidden" />
+
+        <div className="flex items-center gap-3 text-sm text-[var(--foreground)]">
+          <div className="hidden items-center gap-2 md:flex">
+            <CalendarDays size={19} className="text-[var(--muted)]" />
+            <span>{date}</span>
+          </div>
+          <button
+            className="relative flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-[rgba(255,253,248,0.78)] text-[var(--foreground)]"
+            aria-label="Notifications"
+            type="button"
+          >
+            <Bell size={19} />
+            <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-[var(--accent-hot)] ring-2 ring-[var(--surface)]" />
+          </button>
+          <Link
+            className="hidden items-center gap-3 rounded-full border border-[var(--line)] bg-[rgba(255,253,248,0.78)] py-1.5 pl-1.5 pr-3 md:flex"
+            href="/"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--secondary-container)] text-sm font-bold text-[var(--secondary)]">
+              J
+            </span>
+            <span className="font-semibold">Justin</span>
+            <ChevronDown size={15} className="text-[var(--muted)]" />
+          </Link>
+        </div>
+      </div>
     </header>
+  );
+}
+
+function Sidebar({ active }: { active: "Home" | "Tools" }) {
+  const pathname = usePathname();
+  const primary = [
+    { label: "Today", href: "/", icon: LayoutDashboard, active: active === "Home" && pathname === "/" },
+    { label: "Calendar", icon: CalendarDays },
+    { label: "Inbox", icon: Mail },
+    { label: "AI Brief", icon: Sparkles },
+  ];
+  const tools = [
+    { label: "Real Estate", href: "/real-estate", icon: Home },
+    { label: "Ledger", href: "/ledger", icon: WalletCards },
+    { label: "Future Tools", icon: DatabaseZap },
+  ];
+
+  return (
+    <aside className="sticky top-0 hidden h-screen border-r border-[var(--line)] bg-[rgba(255,244,230,0.52)] p-5 backdrop-blur-xl lg:flex lg:flex-col">
+      <Link className="flex items-center gap-3" href="/">
+        <BrandLogo className="h-11 w-11" />
+        <div>
+          <p className="font-bold leading-tight">Orange OS</p>
+          <p className="text-xs text-[var(--muted)]">Personal cockpit</p>
+        </div>
+      </Link>
+
+      <button className="os-primary-button mt-7 flex h-12 items-center justify-center gap-2 px-4 text-sm font-semibold" type="button">
+        <Plus size={17} />
+        Quick capture
+      </button>
+
+      <nav className="mt-7 grid gap-1" aria-label="Desktop navigation">
+        {primary.map((item) => (
+          <SidebarLink key={item.label} {...item} />
+        ))}
+      </nav>
+
+      <div className="mt-7">
+        <p className="os-label px-3">Tools</p>
+        <nav className="mt-3 grid gap-1" aria-label="Tool navigation">
+          {tools.map((item) => (
+            <SidebarLink key={item.label} {...item} active={Boolean(item.href && pathname === item.href)} />
+          ))}
+        </nav>
+      </div>
+
+      <div className="mt-auto grid gap-2">
+        <SidebarLink label="Settings" icon={Settings} />
+        <Link
+          className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-[var(--muted)] hover:bg-white/62 hover:text-[var(--accent)]"
+          href="/auth/signout"
+        >
+          <LogOut size={18} />
+          Log out
+        </Link>
+      </div>
+    </aside>
+  );
+}
+
+function SidebarLink({
+  label,
+  icon: Icon,
+  href,
+  active = false,
+}: {
+  label: string;
+  icon: LucideIcon;
+  href?: string;
+  active?: boolean;
+}) {
+  const className = `relative flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold transition ${
+    active
+      ? "bg-white text-[var(--accent)] shadow-[0_9px_26px_rgba(110,56,13,0.07)]"
+      : "text-[var(--muted)] hover:bg-white/62 hover:text-[var(--accent)]"
+  }`;
+  const content = (
+    <>
+      {active ? <span className="h-2 w-2 rounded-full bg-[var(--accent)]" /> : null}
+      <Icon size={18} />
+      <span>{label}</span>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link className={className} href={href}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button className={className} type="button">
+      {content}
+    </button>
   );
 }
 
 export function BottomDock({ active = "Home" }: { active?: "Home" | "Tools" }) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const items: DockItem[] = [
-    { label: "Home", icon: Home, active: active === "Home", href: "/" },
+    { label: "Home", icon: LayoutDashboard, active: active === "Home", href: "/" },
     {
       label: "Search",
       icon: Search,
@@ -89,7 +251,7 @@ export function BottomDock({ active = "Home" }: { active?: "Home" | "Tools" }) {
   return (
     <nav
       aria-label="Primary"
-      className="fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full border border-[var(--line)] bg-white/82 px-4 py-3 shadow-[var(--shadow-soft)] backdrop-blur-xl"
+      className="fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[var(--line)] bg-[rgba(255,253,248,0.9)] px-3 py-3 shadow-[var(--shadow-soft)] backdrop-blur-xl lg:hidden"
     >
       {items.map((item) => (
         <DockButton
@@ -116,7 +278,7 @@ function DockButton({
   const hasOptions = Boolean(item.options?.length);
   const buttonClass = `flex h-11 w-11 items-center justify-center rounded-full transition ${
     item.active || open
-      ? "bg-[var(--secondary-container)] text-[var(--secondary)]"
+      ? "bg-[var(--gradient-citrus)] text-white shadow-[0_10px_20px_rgba(232,75,27,0.2)]"
       : "text-[var(--muted)] hover:bg-[var(--panel-strong)] hover:text-[var(--accent)]"
   }`;
 
@@ -163,7 +325,7 @@ function DockButton({
             }`}
           />
           <div
-            className={`absolute bottom-16 left-1/2 min-w-44 -translate-x-1/2 rounded-[1.25rem] border border-[var(--line)] bg-white p-2 shadow-[var(--shadow-soft)] transition ${
+            className={`absolute bottom-16 left-1/2 min-w-44 -translate-x-1/2 rounded-[1.25rem] border border-[var(--line)] bg-[var(--surface)] p-2 shadow-[var(--shadow-soft)] transition ${
               open ? "pointer-events-auto translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"
             }`}
           >

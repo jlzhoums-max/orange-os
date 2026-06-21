@@ -6,6 +6,7 @@ import {
   Bell,
   Bot,
   CalendarDays,
+  CheckCircle2,
   ChevronRight,
   Clock,
   DatabaseZap,
@@ -13,9 +14,10 @@ import {
   Mail,
   RefreshCcw,
   Sparkles,
+  Target,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { AppTopbar, BottomDock } from "@/components/app-chrome";
+import { AppChrome } from "@/components/app-chrome";
 import { IntegrationStatus } from "@/components/integration-status";
 import {
   briefItems,
@@ -53,14 +55,6 @@ function formatTime(date: Date) {
     hour: "numeric",
     minute: "2-digit",
     second: "2-digit",
-  }).format(date);
-}
-
-function formatDate(date: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
   }).format(date);
 }
 
@@ -347,52 +341,75 @@ export function DashboardClient({ initialTimestamp }: DashboardClientProps) {
   }, [loadAiBrief, loadLiveData, syncDailyData]);
 
   return (
-    <div className="min-h-screen bg-[var(--background)]">
-      <AppTopbar />
-      <main className="min-h-screen px-4 pb-28 pt-5 sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5">
-          <header className="sticky top-0 z-30 -mx-4 flex flex-col gap-4 bg-[var(--background)]/82 px-4 py-4 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:flex-row lg:items-center lg:justify-between lg:px-8">
-          <div>
-            <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-[var(--muted)]">
-              <span className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--panel-strong)] px-4 py-2">
-                <Activity size={15} />
-                Live personal command center
-              </span>
-              <span className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--panel-strong)] px-4 py-2">
-                <RefreshCcw size={15} />
-                {dataLoading ? "Refreshing..." : `Refreshed ${formatTime(lastRefresh)}`}
-              </span>
+    <AppChrome active="Home">
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-6">
+        <section className="grid gap-5 xl:grid-cols-[1fr_0.34fr]">
+          <div className="os-card os-watermark relative overflow-hidden p-6 sm:p-8 lg:min-h-[24rem]">
+            <div className="relative z-10 max-w-3xl">
+              <h1 className="os-section-title text-4xl font-bold tracking-normal text-balance sm:text-5xl">
+                Good {dayPart}, Justin.
+              </h1>
+              <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--muted)] sm:text-lg">
+                {dayPartBriefs[dayPart]}
+              </p>
+
+              <div className="mt-10 lg:max-w-[58%]">
+                <p className="os-label">Today&apos;s focus</p>
+                <div className="mt-4 grid gap-3">
+                  {(aiBrief?.focus_items?.length ? aiBrief.focus_items : briefItems).slice(0, 3).map((item) => (
+                    <div key={item.label} className="flex items-center gap-3">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--gradient-citrus)] text-white">
+                        <CheckCircle2 size={15} />
+                      </span>
+                      <span className="line-clamp-2 text-[13px] font-semibold leading-5 sm:text-sm">
+                        {item.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-            <h1 className="max-w-4xl text-4xl font-bold tracking-normal text-balance sm:text-5xl">
-              Good {dayPart}, Justin.
-            </h1>
-            <p className="mt-3 max-w-3xl text-base leading-7 text-[var(--muted)] sm:text-lg">
-              {dayPartBriefs[dayPart]}
+            <div className="pointer-events-none absolute bottom-0 right-0 hidden h-72 w-2/3 overflow-hidden rounded-br-[1.75rem] lg:block">
+              <div className="absolute inset-x-0 bottom-0 h-56 bg-[linear-gradient(160deg,rgba(255,176,43,0.04),rgba(244,126,22,0.42)_55%,rgba(232,75,27,0.9))]" />
+              <div className="absolute bottom-9 right-28 h-36 w-36 rounded-full bg-[radial-gradient(circle_at_36%_28%,#fff7e9_0_7%,#ffb02b_8%,#f47e16_58%,#e84b1b_100%)] shadow-[0_24px_70px_rgba(232,75,27,0.23)]">
+                <div className="absolute inset-6 rounded-full border-[10px] border-white/80 bg-[url('/brand/citrus-logo-mark.svg')] bg-contain bg-center bg-no-repeat" />
+              </div>
+              <div className="absolute bottom-0 left-0 h-28 w-full rounded-t-[60%] bg-[#ffb55d]/32" />
+              <div className="absolute bottom-0 left-24 h-36 w-full rounded-t-[70%] bg-[#ff8b2c]/40" />
+              <div className="absolute bottom-0 left-52 h-28 w-full rounded-t-[60%] bg-[#f7671b]/54" />
+            </div>
+          </div>
+
+          <aside className="os-card p-6">
+            <p className="os-label">Daily intent</p>
+            <p className="mt-6 text-4xl leading-none text-[var(--accent)]">&ldquo;</p>
+            <p className="mt-1 text-2xl font-semibold leading-snug text-[var(--foreground)]">
+              Small daily improvements lead to stunning results.
             </p>
-          </div>
-
-          <div className="os-card-soft grid min-w-64 grid-cols-2 gap-2 p-4">
-            <div>
-              <p className="text-xs uppercase text-[var(--muted)]">Today</p>
-              <p className="mt-1 font-medium">{formatDate(now)}</p>
+            <p className="mt-4 text-sm text-[var(--muted)]">Robin Sharma</p>
+            <button className="os-secondary-button mt-8 h-12 px-5 text-sm font-semibold" type="button">
+              Set New Intent
+            </button>
+            <div className="mt-6 rounded-2xl border border-[var(--line)] bg-white/58 p-4 text-sm text-[var(--muted)]">
+              <div className="flex items-center gap-2">
+                <RefreshCcw size={15} className={dataLoading ? "animate-spin text-[var(--accent)]" : "text-[var(--accent)]"} />
+                <span>{dataLoading ? "Refreshing..." : `Refreshed ${formatTime(lastRefresh)}`}</span>
+              </div>
             </div>
-            <div>
-              <p className="text-xs uppercase text-[var(--muted)]">Local time</p>
-              <p className="mt-1 font-mono text-sm">{formatTime(now)}</p>
-            </div>
-          </div>
-        </header>
+          </aside>
+        </section>
 
-        <section className="grid gap-4 lg:grid-cols-[1.4fr_0.8fr]">
+        <section className="grid gap-5 xl:grid-cols-[1.4fr_0.8fr]">
           <div className="os-card p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <div className="flex items-center gap-2 text-sm font-medium text-[var(--accent-ink)]">
+                <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
                   <Bot size={18} />
                   AI Brief
                 </div>
                 <h2 className="mt-2 text-2xl font-semibold">What matters for the rest of the day</h2>
               </div>
+              <div className="flex flex-wrap gap-2">
               <button
                 className="os-primary-button inline-flex h-12 items-center justify-center gap-2 px-5 text-sm font-semibold hover:opacity-90 disabled:cursor-wait disabled:opacity-70"
                 disabled={briefLoading}
@@ -411,6 +428,7 @@ export function DashboardClient({ initialTimestamp }: DashboardClientProps) {
                 <RefreshCcw size={16} />
                 {syncing ? "Syncing..." : "Sync day"}
               </button>
+              </div>
             </div>
 
             <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -466,7 +484,7 @@ export function DashboardClient({ initialTimestamp }: DashboardClientProps) {
           </div>
 
           <div className="os-card p-6">
-            <div className="flex items-center gap-2 text-sm font-medium text-[var(--accent-ink)]">
+            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
               <DatabaseZap size={18} />
               Data connections
             </div>
@@ -497,7 +515,7 @@ export function DashboardClient({ initialTimestamp }: DashboardClientProps) {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {dashboardMetrics.map((metric) => (
             <div key={metric.label} className="os-card p-5">
               <div className="os-icon-bubble flex h-12 w-12 items-center justify-center">
@@ -561,11 +579,13 @@ export function DashboardClient({ initialTimestamp }: DashboardClientProps) {
             </div>
           </Panel>
         </section>
-
-        </div>
-      </main>
-      <BottomDock active="Home" />
-    </div>
+        <section className="grid gap-5 lg:grid-cols-[0.9fr_1fr_0.7fr]">
+          <ProgressCard />
+          <QuickCaptureCard />
+          <EnergyCard />
+        </section>
+      </div>
+    </AppChrome>
   );
 }
 
@@ -579,13 +599,81 @@ function Panel({ title, icon: Icon, children }: PanelProps) {
   return (
     <section className="os-card p-5">
       <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm font-medium text-[var(--accent-ink)]">
+        <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
           <Icon size={18} />
           {title}
         </div>
         <ChevronRight size={17} className="text-[var(--muted)]" />
       </div>
       {children}
+    </section>
+  );
+}
+
+function ProgressCard() {
+  return (
+    <section className="os-card p-6">
+      <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
+        <Target size={18} />
+        Task Progress
+      </div>
+      <div className="mt-6 flex items-center gap-6">
+        <div className="relative flex h-36 w-36 shrink-0 items-center justify-center rounded-full bg-[conic-gradient(var(--accent)_0_72%,rgba(244,126,22,0.16)_72%_100%)]">
+          <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-[var(--surface)]">
+            <span className="text-3xl font-semibold">72%</span>
+            <span className="text-xs text-[var(--muted)]">Completed</span>
+          </div>
+        </div>
+        <div className="grid gap-3 text-sm">
+          <p><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[var(--secondary)]" />Completed 18</p>
+          <p><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[var(--accent)]" />In Progress 6</p>
+          <p><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[var(--surface-warm)]" />Pending 11</p>
+        </div>
+      </div>
+      <p className="mt-6 text-sm text-[var(--muted)]">35 tasks total <span className="ml-4 font-semibold text-[var(--secondary)]">+12% from last week</span></p>
+    </section>
+  );
+}
+
+function QuickCaptureCard() {
+  return (
+    <section className="os-card p-6">
+      <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
+        <Sparkles size={18} />
+        Quick Capture
+      </div>
+      <div className="mt-5 flex gap-2">
+        <input className="os-input h-12 min-w-0 flex-1 px-4 text-sm" placeholder="Capture a task, note, thought, or event..." />
+        <button className="os-primary-button flex h-12 w-12 shrink-0 items-center justify-center" type="button">
+          <Sparkles size={18} />
+        </button>
+      </div>
+      <div className="mt-5 grid gap-3 text-sm">
+        {["Review ledger pacing", "Call contractor about photos", "Draft project update"].map((note, index) => (
+          <div className="flex justify-between gap-3" key={note}>
+            <span>{note}</span>
+            <span className="text-[var(--muted)]">{index === 0 ? "Today" : "Soon"}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function EnergyCard() {
+  return (
+    <section className="os-card p-6">
+      <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
+        <Activity size={18} />
+        Energy
+      </div>
+      <div className="mx-auto mt-6 flex h-36 w-36 items-center justify-center rounded-full bg-[conic-gradient(var(--accent)_0_82%,rgba(244,126,22,0.14)_82%_100%)]">
+        <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-[var(--surface)]">
+          <span className="text-4xl font-semibold">82</span>
+          <span className="text-sm text-[var(--muted)]">Great</span>
+        </div>
+      </div>
+      <p className="mt-5 text-center text-sm text-[var(--muted)]">Energy trend <span className="font-semibold text-[var(--secondary)]">+12% from yesterday</span></p>
     </section>
   );
 }
