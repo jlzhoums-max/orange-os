@@ -86,7 +86,7 @@ export function AppTopbar() {
         <div className="flex items-center gap-2 text-sm text-[var(--foreground)]">
           <div className="hidden items-center gap-2 md:flex">
             <CalendarDays size={17} className="text-[var(--muted)]" />
-            <span>{date}</span>
+            <span suppressHydrationWarning>{date}</span>
           </div>
           <button
             className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[rgba(255,253,248,0.78)] text-[var(--foreground)]"
@@ -212,6 +212,7 @@ function SidebarLink({
 
 export function BottomDock({ active = "Home" }: { active?: "Home" | "Mail" | "Tools" }) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const pathname = usePathname();
   const items: DockItem[] = [
     { label: "Home", icon: LayoutDashboard, active: active === "Home", href: "/" },
     {
@@ -262,6 +263,7 @@ export function BottomDock({ active = "Home" }: { active?: "Home" | "Mail" | "To
           key={item.label}
           onOpenChange={setOpenMenu}
           open={openMenu === item.label}
+          pathname={pathname}
         />
       ))}
     </nav>
@@ -272,17 +274,19 @@ function DockButton({
   item,
   onOpenChange,
   open,
+  pathname,
 }: {
   item: DockItem;
   onOpenChange: (label: string | null) => void;
   open: boolean;
+  pathname: string;
 }) {
   const Icon = item.icon;
   const hasOptions = Boolean(item.options?.length);
   const isActive = Boolean(item.active);
   const buttonClass = `flex h-10 w-10 items-center justify-center rounded-full transition ${
     isActive
-      ? "bg-[var(--gradient-citrus)] text-white shadow-[0_10px_20px_rgba(232,75,27,0.2)]"
+      ? "border border-[rgba(244,126,22,0.24)] bg-[rgba(244,126,22,0.14)] text-[var(--accent)] shadow-[0_10px_20px_rgba(232,75,27,0.12)]"
       : open
       ? "bg-[var(--panel-strong)] text-[var(--accent)]"
       : "text-[var(--muted)] hover:bg-[var(--panel-strong)] hover:text-[var(--accent)]"
@@ -303,7 +307,7 @@ function DockButton({
       }}
     >
       {item.href && !hasOptions ? (
-        <Link aria-label={item.label} className={buttonClass} href={item.href}>
+        <Link aria-current={isActive ? "page" : undefined} aria-label={item.label} className={buttonClass} href={item.href}>
           <Icon size={19} />
         </Link>
       ) : (
@@ -337,12 +341,16 @@ function DockButton({
           >
             {item.options?.map((option) => {
               const OptionIcon = option.icon;
-              const className =
-                "flex h-11 w-full items-center gap-3 rounded-full px-3 text-left text-sm font-medium text-[var(--muted)] hover:bg-[var(--panel-strong)] hover:text-[var(--accent)]";
+              const optionActive = Boolean(option.href && pathname === option.href);
+              const className = `flex h-11 w-full items-center gap-3 rounded-full px-3 text-left text-sm font-medium transition ${
+                optionActive
+                  ? "bg-[rgba(244,126,22,0.12)] text-[var(--accent)]"
+                  : "text-[var(--muted)] hover:bg-[var(--panel-strong)] hover:text-[var(--accent)]"
+              }`;
 
               if (option.href) {
                 return (
-                  <Link className={className} href={option.href} key={option.label}>
+                  <Link aria-current={optionActive ? "page" : undefined} className={className} href={option.href} key={option.label}>
                     <OptionIcon size={17} />
                     {option.label}
                   </Link>
