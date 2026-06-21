@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, LogOut, Mail } from "lucide-react";
+import { CalendarDays, Check, LogOut, Mail, Pencil, X } from "lucide-react";
 import { AppChrome } from "@/components/app-chrome";
 import { createClient } from "@/lib/supabase/client";
 import { googleIntegrationScopes } from "@/lib/google/scopes";
@@ -18,6 +18,8 @@ type ConnectedAccount = {
 type IntegrationStatus = {
   profile?: {
     email: string | null;
+    fullName: string | null;
+    avatarUrl: string | null;
   };
   google: {
     connected: boolean;
@@ -47,10 +49,32 @@ function accountFromStatus(account: NonNullable<IntegrationStatus["google"]["acc
   };
 }
 
+function nameFromEmail(email: string) {
+  const [name] = email.split("@");
+  if (!name) return "Ju";
+  return name
+    .split(/[._-]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function initialsFor(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("") || "J";
+}
+
 export function ProfileClient() {
   const [status, setStatus] = useState<IntegrationStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [savingName, setSavingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
   const [message, setMessage] = useState("Ready");
 
   useEffect(() => {
@@ -72,6 +96,8 @@ export function ProfileClient() {
     return (status?.google.accounts ?? []).map(accountFromStatus);
   }, [status]);
   const profileEmail = status?.profile?.email ?? accounts[0]?.email ?? "ju@home.os";
+  const profileName = status?.profile?.fullName?.trim() || nameFromEmail(profileEmail);
+  const profileInitials = initialsFor(profileName);
 
   async function connectGoogle() {
     setConnecting(true);
@@ -110,6 +136,43 @@ export function ProfileClient() {
     }
   }
 
+  async function saveProfileName() {
+    const fullName = nameDraft.trim();
+    if (!fullName) {
+      setMessage("Name is required");
+      return;
+    }
+
+    setSavingName(true);
+    setMessage("Saving profile");
+
+    try {
+      const response = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fullName }),
+      });
+      const payload = (await response.json()) as { profile?: NonNullable<IntegrationStatus["profile"]>; error?: string };
+
+      if (!response.ok || !payload.profile) {
+        throw new Error(payload.error ?? "Could not save profile");
+      }
+
+      setStatus((current) => ({
+        google: current?.google ?? { connected: false, accountEmail: null, scopes: [], accounts: [] },
+        ...current,
+        profile: payload.profile,
+      }));
+      setNameDraft(fullName);
+      setEditingName(false);
+      setMessage("Profile saved");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not save profile");
+    } finally {
+      setSavingName(false);
+    }
+  }
+
   async function signOut() {
     await fetch("/auth/signout", { method: "POST" });
     window.location.assign("/login");
@@ -122,15 +185,42 @@ export function ProfileClient() {
         <h1 className="mb-3 text-[22px] font-extrabold tracking-normal text-[var(--foreground)] md:hidden">Profile</h1>
 
         <section className="mb-3.5 flex items-center gap-3.5 rounded-[18px] border border-[var(--line)] bg-white p-[18px] shadow-[0_6px_16px_rgba(90,55,20,.04)] md:mb-[22px] md:gap-5 md:rounded-[22px] md:p-6 md:shadow-[var(--shadow-card)]">
-          <div className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#F47E16,#E84B1B)] text-[22px] font-extrabold text-white md:h-[72px] md:w-[72px] md:text-[28px]">J</div>
+          <div className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#F47E16,#E84B1B)] text-[22px] font-extrabold text-white md:h-[72px] md:w-[72px] md:text-[28px]">{profileInitials}</div>
           <div className="min-w-0 flex-1">
-            <h2 className="truncate text-[17px] font-extrabold text-[var(--foreground)] md:text-xl">Ju Carter</h2>
+            {editingName ? (
+              <input
+                autoFocus
+                className="w-full min-w-0 border-0 border-b-2 border-[var(--line)] bg-transparent pb-1 text-[17px] font-extrabold text-[var(--foreground)] outline-none focus:border-[var(--accent-hot)] md:text-xl"
+                disabled={savingName}
+                maxLength={80}
+                onChange={(event) => setNameDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void saveProfileName();
+                  if (event.key === "Escape") setEditingName(false);
+                }}
+                value={nameDraft}
+              />
+            ) : (
+              <h2 className="truncate text-[17px] font-extrabold text-[var(--foreground)] md:text-xl">{profileName}</h2>
+            )}
             <p className="mt-0.5 truncate text-[12.5px] font-semibold text-[var(--muted-soft)] md:text-[13.5px]">{profileEmail}<span className="hidden md:inline"> · Member since 2024</span></p>
           </div>
-          <button className="rounded-[10px] bg-[#F1E8D8] px-3 py-[7px] text-xs font-bold text-[#6E6456] md:rounded-[12px] md:border-[1.5px] md:border-[#E7DBC4] md:bg-white md:px-[18px] md:py-2.5 md:text-[13.5px]" type="button">
-            <span className="md:hidden">Edit</span>
-            <span className="hidden md:inline">Edit profile</span>
-          </button>
+          {editingName ? (
+            <div className="flex shrink-0 items-center gap-1.5">
+              <button aria-label="Cancel name edit" className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#F1E8D8] text-[#6E6456]" disabled={savingName} onClick={() => setEditingName(false)} type="button">
+                <X size={16} />
+              </button>
+              <button aria-label="Save name" className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[var(--accent-hot)] text-white disabled:cursor-wait disabled:opacity-70" disabled={savingName} onClick={saveProfileName} type="button">
+                <Check size={17} strokeWidth={2.6} />
+              </button>
+            </div>
+          ) : (
+            <button className="flex shrink-0 items-center gap-2 rounded-[10px] bg-[#F1E8D8] px-3 py-[7px] text-xs font-bold text-[#6E6456] md:rounded-[12px] md:border-[1.5px] md:border-[#E7DBC4] md:bg-white md:px-[18px] md:py-2.5 md:text-[13.5px]" onClick={() => { setNameDraft(profileName); setEditingName(true); }} type="button">
+              <Pencil size={14} />
+              <span className="md:hidden">Edit</span>
+              <span className="hidden md:inline">Edit profile</span>
+            </button>
+          )}
         </section>
 
         <section className="mb-3.5 rounded-[18px] border border-[var(--line)] bg-white p-[18px] shadow-[0_6px_16px_rgba(90,55,20,.04)] md:mb-[22px] md:rounded-[22px] md:p-6 md:shadow-[var(--shadow-card)]">

@@ -71,6 +71,7 @@ export async function GET() {
     ledgerAccountsResult,
     ledgerSettingsResult,
     todosResult,
+    profileResult,
   ] = await Promise.all([
     admin
       .from("synced_emails")
@@ -127,6 +128,7 @@ export async function GET() {
       .order("due_date", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false })
       .limit(12),
+    admin.from("profiles").select("email, full_name, avatar_url").eq("id", userId).maybeSingle(),
   ]);
 
   const dataError =
@@ -137,7 +139,8 @@ export async function GET() {
     projectsResult.error ??
     ledgerExpensesResult.error ??
     ledgerAccountsResult.error ??
-    ledgerSettingsResult.error;
+    ledgerSettingsResult.error ??
+    profileResult.error;
 
   if (dataError) {
     return NextResponse.json(
@@ -177,6 +180,11 @@ export async function GET() {
   const openTodos = todos.filter((todo) => !todo.completed);
 
   return NextResponse.json({
+    profile: {
+      email: profileResult.data?.email ?? user.email ?? null,
+      fullName: profileResult.data?.full_name ?? null,
+      avatarUrl: profileResult.data?.avatar_url ?? null,
+    },
     emails: (emailsResult.data ?? []).map((email) => ({
       ...email,
       account_email: primaryInbox,

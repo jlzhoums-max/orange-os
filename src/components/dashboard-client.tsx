@@ -95,6 +95,15 @@ function varianceLabel(value: number) {
   return `${formatMoneyCompact(Math.abs(value))} ${value >= 0 ? "under budget" : "over budget"}`;
 }
 
+function initialsFor(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("") || "J";
+}
+
 type DashboardClientProps = {
   initialTimestamp: string;
 };
@@ -142,6 +151,11 @@ type LiveTodoSummary = {
 };
 
 type LiveDashboardData = {
+  profile?: {
+    email: string | null;
+    fullName: string | null;
+    avatarUrl: string | null;
+  };
   emails: Array<{
     sender: string | null;
     subject: string | null;
@@ -365,6 +379,8 @@ export function DashboardClient({ initialTimestamp }: DashboardClientProps) {
   const ledgerSummary = liveData?.ledger?.hasData ? liveData.ledger : fallbackLedgerSummary;
   const realEstateSummary = liveData?.realEstate?.hasData ? liveData.realEstate : fallbackRealEstateSummary;
   const todoSummary = liveData?.todos ?? fallbackTodoSummary;
+  const profileName = liveData?.profile?.fullName?.trim() || "Ju";
+  const profileInitials = initialsFor(profileName);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -412,7 +428,7 @@ export function DashboardClient({ initialTimestamp }: DashboardClientProps) {
         <header className="hidden flex-col gap-4 md:flex md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-[25px] font-extrabold tracking-normal text-[var(--foreground)]">
-              {greetingFor(dayPart)}, Ju
+              {greetingFor(dayPart)}, {profileName}
             </h1>
             <p className="mt-[3px] text-[13.5px] font-semibold text-[var(--muted-soft)]">
               {formatOverviewDate(now)} · A sweeter day ahead
@@ -441,6 +457,8 @@ export function DashboardClient({ initialTimestamp }: DashboardClientProps) {
           inboxItems={liveInboxItems}
           ledgerSummary={ledgerSummary}
           priorities={priorities}
+          profileInitials={profileInitials}
+          profileName={profileName}
           realEstateSummary={realEstateSummary}
           todoSummary={todoSummary}
           unreadCount={unreadCount}
@@ -512,6 +530,8 @@ function MobileOverview({
   inboxItems,
   ledgerSummary,
   priorities,
+  profileInitials,
+  profileName,
   realEstateSummary,
   todoSummary,
   unreadCount,
@@ -519,6 +539,8 @@ function MobileOverview({
   inboxItems: InboxItem[];
   ledgerSummary: LiveLedgerSummary;
   priorities: string[];
+  profileInitials: string;
+  profileName: string;
   realEstateSummary: LiveRealEstateSummary;
   todoSummary: LiveTodoSummary;
   unreadCount: string;
@@ -532,11 +554,11 @@ function MobileOverview({
           <Image alt="JU OS" height={30} src="/brand/citrus-logo-mark-512.png" width={30} />
           <div className="leading-none">
             <p className="text-[11px] font-bold text-[#A99B82]">Good morning</p>
-            <h1 className="mt-[3px] text-lg font-extrabold tracking-normal text-[var(--foreground)]">Ju Carter</h1>
+            <h1 className="mt-[3px] text-lg font-extrabold tracking-normal text-[var(--foreground)]">{profileName}</h1>
           </div>
         </div>
         <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-[linear-gradient(135deg,#F47E16,#E84B1B)] text-base font-extrabold text-white">
-          J
+          {profileInitials}
           <span className="absolute right-0 top-0 h-[11px] w-[11px] rounded-full border-2 border-[var(--background)] bg-[#F0563B]" />
         </div>
       </header>

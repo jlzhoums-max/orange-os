@@ -25,12 +25,19 @@ export async function GET() {
   }
 
   const admin = getSupabaseAdmin();
-  const { data: accounts, error } = await admin
-    .from("connected_accounts")
-    .select("provider, account_email, scopes, expires_at, updated_at")
-    .eq("user_id", user.id)
-    .eq("provider", "google")
-    .order("updated_at", { ascending: false });
+  const [{ data: profile, error: profileError }, { data: accounts, error }] = await Promise.all([
+    admin.from("profiles").select("email, full_name, avatar_url").eq("id", user.id).maybeSingle(),
+    admin
+      .from("connected_accounts")
+      .select("provider, account_email, scopes, expires_at, updated_at")
+      .eq("user_id", user.id)
+      .eq("provider", "google")
+      .order("updated_at", { ascending: false }),
+  ]);
+
+  if (profileError) {
+    return NextResponse.json({ error: profileError.message }, { status: 500 });
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -40,7 +47,9 @@ export async function GET() {
 
   return NextResponse.json({
     profile: {
-      email: user.email ?? null,
+      email: profile?.email ?? user.email ?? null,
+      fullName: profile?.full_name ?? null,
+      avatarUrl: profile?.avatar_url ?? null,
     },
     google: {
       connected: Boolean(primaryAccount),
