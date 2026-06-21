@@ -1,9 +1,6 @@
-const CACHE_NAME = "orange-os-shell-v1";
+const CACHE_NAME = "orange-os-shell-v2";
 const APP_SHELL = [
-  "/",
   "/login",
-  "/ledger",
-  "/real-estate",
   "/icon.svg",
   "/brand/citrus-logo-mark.svg",
   "/brand/citrus-logo-mark-512.png",
@@ -36,10 +33,15 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (request.mode === "navigate") {
+    event.respondWith(fetch(request).catch(() => caches.match("/login")));
+    return;
+  }
+
   event.respondWith(
     fetch(request)
       .then((response) => {
-        if (response.ok && (request.mode === "navigate" || url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/brand/"))) {
+        if (response.ok && (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/brand/"))) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
         }
