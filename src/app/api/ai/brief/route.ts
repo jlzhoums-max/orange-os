@@ -2,6 +2,7 @@ import { generateText, Output } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { NextResponse } from "next/server";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { hasSupabasePublicEnv } from "@/lib/env";
@@ -69,9 +70,9 @@ export async function GET() {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.getClaims();
+  const user = await getAuthenticatedUser(supabase);
 
-  if (error || !data?.claims?.sub) {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -79,7 +80,7 @@ export async function GET() {
   const { data: brief } = await admin
     .from("ai_briefs")
     .select("*")
-    .eq("user_id", data.claims.sub)
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -97,14 +98,14 @@ export async function POST() {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.getClaims();
+  const user = await getAuthenticatedUser(supabase);
 
-  if (error || !data?.claims?.sub) {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const admin = getSupabaseAdmin();
-  const userId = data.claims.sub;
+  const userId = user.id;
   const [emails, events, projects, quotes, ledgerExpenses, ledgerAccounts, ledgerSettings] = await Promise.all([
     admin
       .from("synced_emails")

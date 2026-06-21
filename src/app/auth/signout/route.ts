@@ -10,7 +10,7 @@ async function signOut(request: Request) {
 }
 
 export async function GET(request: Request) {
-  return signOut(request);
+  return NextResponse.redirect(`${getAppOrigin(request)}/login`);
 }
 
 export async function POST(request: Request) {

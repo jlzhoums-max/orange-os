@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { fetchMarketQuotes } from "@/lib/market/quotes";
@@ -15,9 +16,9 @@ export async function GET(request: Request) {
 
   if (process.env.SUPABASE_SECRET_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL) {
     const supabase = await createClient();
-    const { data } = await supabase.auth.getClaims();
+    const user = await getAuthenticatedUser(supabase);
 
-    if (data?.claims?.sub) {
+    if (user) {
       const admin = getSupabaseAdmin();
       await admin.from("market_quotes").insert(
         quotes.map((quote) => ({

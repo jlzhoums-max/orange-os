@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasSupabasePublicEnv } from "@/lib/env";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -9,14 +10,14 @@ export async function GET() {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.getClaims();
+  const user = await getAuthenticatedUser(supabase);
 
-  if (error || !data?.claims?.sub) {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const admin = getSupabaseAdmin();
-  const userId = data.claims.sub;
+  const userId = user.id;
 
   const [emailsResult, eventsResult, quotesResult] = await Promise.all([
     admin

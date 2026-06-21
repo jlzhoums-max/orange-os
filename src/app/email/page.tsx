@@ -17,7 +17,7 @@ export default function EmailPage() {
               Dashboard
             </Link>
             <div className="mt-7 max-w-4xl">
-              <div className="flex h-13 w-13 items-center justify-center rounded-2xl bg-[#111827] text-[#ff8a4c]">
+              <div className="flex h-13 w-13 items-center justify-center rounded-2xl bg-[#ff6b1a] text-white shadow-[0_14px_28px_rgba(255,107,26,0.18)]">
                 <MailCheck size={25} />
               </div>
               <h1 className="mt-4 text-3xl font-bold tracking-normal text-balance sm:text-5xl">
@@ -37,7 +37,7 @@ export default function EmailPage() {
               ["Calendar fit", "See follow-ups and availability without leaving mail.", CalendarDays],
             ].map(([title, detail, Icon]) => (
               <div className="os-card-soft flex items-start gap-3 p-4" key={title as string}>
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#111827] text-[#ff8a4c]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#ffead7] text-[#df5a12]">
                   <Icon size={18} />
                 </div>
                 <div>

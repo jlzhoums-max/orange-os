@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasSupabasePublicEnv } from "@/lib/env";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 
 type RouteContext = {
@@ -13,9 +14,9 @@ export async function PUT(request: Request, context: RouteContext) {
 
   const { projectId } = await context.params;
   const supabase = await createClient();
-  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+  const user = await getAuthenticatedUser(supabase);
 
-  if (claimsError || !claimsData?.claims?.sub) {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -55,9 +56,9 @@ export async function DELETE(_request: Request, context: RouteContext) {
 
   const { projectId } = await context.params;
   const supabase = await createClient();
-  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+  const user = await getAuthenticatedUser(supabase);
 
-  if (claimsError || !claimsData?.claims?.sub) {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

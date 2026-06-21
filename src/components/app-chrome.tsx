@@ -32,7 +32,8 @@ type DockItem = {
   icon: LucideIcon;
   active?: boolean;
   href?: string;
-  options?: Array<{ label: string; href?: string; icon: LucideIcon }>;
+  action?: "signOut";
+  options?: Array<{ label: string; href?: string; icon: LucideIcon; action?: "signOut" }>;
 };
 
 type AppChromeProps = {
@@ -159,13 +160,14 @@ function Sidebar({ active }: { active: "Home" | "Mail" | "Tools" }) {
 
       <div className="mt-auto grid gap-2">
         <SidebarLink label="Settings" icon={Settings} />
-        <Link
+        <button
           className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-[var(--muted)] hover:bg-white/62 hover:text-[var(--accent)]"
-          href="/auth/signout"
+          onClick={signOutUser}
+          type="button"
         >
           <LogOut size={18} />
           Log out
-        </Link>
+        </button>
       </div>
     </aside>
   );
@@ -247,7 +249,7 @@ export function BottomDock({ active = "Home" }: { active?: "Home" | "Mail" | "To
       icon: Settings,
       options: [
         { label: "Profile", icon: UserCircle },
-        { label: "Log out", href: "/auth/signout", icon: LogOut },
+        { label: "Log out", icon: LogOut, action: "signOut" },
       ],
     },
   ];
@@ -358,7 +360,16 @@ function DockButton({
               }
 
               return (
-                <button className={className} key={option.label} type="button">
+                <button
+                  className={className}
+                  key={option.label}
+                  onClick={() => {
+                    if (option.action === "signOut") {
+                      void signOutUser();
+                    }
+                  }}
+                  type="button"
+                >
                   <OptionIcon size={17} />
                   {option.label}
                 </button>
@@ -369,6 +380,11 @@ function DockButton({
       ) : null}
     </div>
   );
+}
+
+async function signOutUser() {
+  await fetch("/auth/signout", { method: "POST" });
+  window.location.assign("/login");
 }
 
 function BrandLogo({ className }: { className?: string }) {

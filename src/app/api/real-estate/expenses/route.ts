@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasSupabasePublicEnv } from "@/lib/env";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -8,9 +9,9 @@ export async function POST(request: Request) {
   }
 
   const supabase = await createClient();
-  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+  const user = await getAuthenticatedUser(supabase);
 
-  if (claimsError || !claimsData?.claims?.sub) {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
   const { data, error } = await supabase
     .from("project_expenses")
     .insert({
-      user_id: claimsData.claims.sub,
+      user_id: user.id,
       project_id: body.projectId,
       category: body.category,
       vendor: body.vendor || "Unassigned vendor",

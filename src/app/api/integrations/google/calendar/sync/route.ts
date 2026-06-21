@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasSupabasePublicEnv } from "@/lib/env";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 import { syncCalendarForUser } from "@/lib/google/sync";
 
@@ -9,13 +10,13 @@ export async function POST() {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.getClaims();
+  const user = await getAuthenticatedUser(supabase);
 
-  if (error || !data?.claims?.sub) {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = data.claims.sub;
+  const userId = user.id;
   const synced = await syncCalendarForUser(userId);
 
   return NextResponse.json({ synced });

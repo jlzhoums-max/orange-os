@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasSupabasePublicEnv } from "@/lib/env";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 import { dbExpense } from "@/lib/ledger/mapper";
 
@@ -14,6 +15,12 @@ export async function PUT(request: Request, { params }: Params) {
 
   const { expenseId } = await params;
   const supabase = await createClient();
+  const user = await getAuthenticatedUser(supabase);
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const body = await request.json();
   const date = String(body.date ?? new Date().toISOString().slice(0, 10));
   const { data, error } = await supabase
@@ -46,6 +53,12 @@ export async function DELETE(_request: Request, { params }: Params) {
 
   const { expenseId } = await params;
   const supabase = await createClient();
+  const user = await getAuthenticatedUser(supabase);
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { error } = await supabase.from("ledger_expenses").delete().eq("id", expenseId);
 
   if (error) {

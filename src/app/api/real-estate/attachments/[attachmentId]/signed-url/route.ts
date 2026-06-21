@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasSupabasePublicEnv } from "@/lib/env";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 
 type RouteContext = {
@@ -13,9 +14,9 @@ export async function GET(_request: Request, context: RouteContext) {
 
   const { attachmentId } = await context.params;
   const supabase = await createClient();
-  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+  const user = await getAuthenticatedUser(supabase);
 
-  if (claimsError || !claimsData?.claims?.sub) {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -23,7 +24,7 @@ export async function GET(_request: Request, context: RouteContext) {
     .from("expense_attachments")
     .select("storage_path, file_name")
     .eq("id", attachmentId)
-    .eq("user_id", claimsData.claims.sub)
+    .eq("user_id", user.id)
     .single();
 
   if (error || !attachment) {

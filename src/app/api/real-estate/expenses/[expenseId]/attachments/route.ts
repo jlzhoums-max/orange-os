@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasSupabasePublicEnv } from "@/lib/env";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 
 type RouteContext = {
@@ -13,9 +14,9 @@ export async function POST(request: Request, context: RouteContext) {
 
   const { expenseId } = await context.params;
   const supabase = await createClient();
-  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+  const user = await getAuthenticatedUser(supabase);
 
-  if (claimsError || !claimsData?.claims?.sub) {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -27,7 +28,7 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const fileExt = file.name.split(".").pop() || "bin";
-  const storagePath = `${claimsData.claims.sub}/${expenseId}/${crypto.randomUUID()}.${fileExt}`;
+  const storagePath = `${user.id}/${expenseId}/${crypto.randomUUID()}.${fileExt}`;
   const { error: uploadError } = await supabase.storage
     .from("expense-attachments")
     .upload(storagePath, file, {
@@ -42,7 +43,7 @@ export async function POST(request: Request, context: RouteContext) {
   const { data, error } = await supabase
     .from("expense_attachments")
     .insert({
-      user_id: claimsData.claims.sub,
+      user_id: user.id,
       expense_id: expenseId,
       storage_path: storagePath,
       file_name: file.name,

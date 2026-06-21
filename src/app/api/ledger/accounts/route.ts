@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasSupabasePublicEnv } from "@/lib/env";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 import { dbAccount } from "@/lib/ledger/mapper";
 import { accountCategory, type LedgerAccountType } from "@/lib/ledger/types";
@@ -10,9 +11,9 @@ export async function POST(request: Request) {
   }
 
   const supabase = await createClient();
-  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+  const user = await getAuthenticatedUser(supabase);
 
-  if (claimsError || !claimsData?.claims?.sub) {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
   const { data, error } = await supabase
     .from("ledger_accounts")
     .insert({
-      user_id: claimsData.claims.sub,
+      user_id: user.id,
       name: body.name || "New account",
       account_type: type,
       category: accountCategory(type),

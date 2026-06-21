@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasSupabasePublicEnv } from "@/lib/env";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 import { dbSettings } from "@/lib/ledger/mapper";
 
@@ -9,9 +10,9 @@ export async function PUT(request: Request) {
   }
 
   const supabase = await createClient();
-  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+  const user = await getAuthenticatedUser(supabase);
 
-  if (claimsError || !claimsData?.claims?.sub) {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -19,7 +20,7 @@ export async function PUT(request: Request) {
   const { data, error } = await supabase
     .from("ledger_settings")
     .upsert({
-      user_id: claimsData.claims.sub,
+      user_id: user.id,
       monthly_base: Number(body.monthlyBase ?? 0),
       split_needs: Number(body.splitNeeds ?? 40),
       split_wants: Number(body.splitWants ?? 40),
