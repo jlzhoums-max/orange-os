@@ -1,21 +1,9 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, BadgeDollarSign, CalendarDays, Landmark, WalletCards } from "lucide-react";
 import { AppChrome } from "@/components/app-chrome";
 import { LedgerTool } from "@/components/ledger-tool";
-import { hasSupabasePublicEnv } from "@/lib/env";
-import { createClient } from "@/lib/supabase/server";
 
 export default async function LedgerPage() {
-  if (hasSupabasePublicEnv()) {
-    const supabase = await createClient();
-    const { data } = await supabase.auth.getClaims();
-
-    if (!data?.claims) {
-      redirect("/login");
-    }
-  }
-
   return (
     <AppChrome active="Tools">
       <div className="mx-auto flex max-w-[1440px] flex-col gap-5">

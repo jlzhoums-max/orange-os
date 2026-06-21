@@ -1,21 +1,9 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, BadgeDollarSign, Camera, ClipboardList, Home, Plus } from "lucide-react";
 import { AppChrome } from "@/components/app-chrome";
 import { RealEstateTracker } from "@/components/real-estate-tracker";
-import { hasSupabasePublicEnv } from "@/lib/env";
-import { createClient } from "@/lib/supabase/server";
 
 export default async function RealEstateToolPage() {
-  if (hasSupabasePublicEnv()) {
-    const supabase = await createClient();
-    const { data } = await supabase.auth.getClaims();
-
-    if (!data?.claims) {
-      redirect("/login");
-    }
-  }
-
   return (
     <AppChrome active="Tools">
         <div className="mx-auto flex max-w-[1440px] flex-col gap-5">
