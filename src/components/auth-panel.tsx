@@ -15,7 +15,8 @@ export function AuthPanel({ mode }: AuthPanelProps) {
   async function signInWithGoogle() {
     setLoading(true);
     const supabase = createClient();
-    const origin = window.location.origin;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+    const origin = appUrl || window.location.origin;
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",

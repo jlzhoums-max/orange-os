@@ -17,6 +17,7 @@ Add these in Vercel Project Settings > Environment Variables for Production, Pre
 ```txt
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+NEXT_PUBLIC_APP_URL
 SUPABASE_SECRET_KEY
 GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET
@@ -27,6 +28,12 @@ CRON_SECRET
 ```
 
 `OPENAI_MODEL` can be `gpt-5.5`.
+
+`NEXT_PUBLIC_APP_URL` should be the canonical production app URL:
+
+```txt
+https://orange-os-five.vercel.app
+```
 
 ## OAuth URLs after deployment
 
