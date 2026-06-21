@@ -6,7 +6,6 @@ import {
   Bell,
   Bot,
   CalendarDays,
-  CheckCircle2,
   ChevronRight,
   Clock,
   DatabaseZap,
@@ -14,7 +13,6 @@ import {
   Mail,
   RefreshCcw,
   Sparkles,
-  Target,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AppChrome } from "@/components/app-chrome";
@@ -75,15 +73,17 @@ function toneClass(tone: string) {
 }
 
 function riskClass(risk: string) {
+  const base = "rounded-full px-2 py-0.5 text-[11px] font-semibold";
+
   if (risk === "High") {
-    return "bg-red-100 text-red-800";
+    return `${base} bg-red-100 text-red-800`;
   }
 
   if (risk === "Medium") {
-    return "bg-amber-100 text-amber-800";
+    return `${base} bg-amber-100 text-amber-800`;
   }
 
-  return "bg-emerald-100 text-emerald-800";
+  return `${base} bg-emerald-100 text-emerald-800`;
 }
 
 type DashboardClientProps = {
@@ -342,190 +342,76 @@ export function DashboardClient({ initialTimestamp }: DashboardClientProps) {
 
   return (
     <AppChrome active="Home">
-      <div className="mx-auto flex max-w-[1440px] flex-col gap-6">
-        <section className="grid gap-5 xl:grid-cols-[1fr_0.34fr]">
-          <div className="os-card os-watermark relative overflow-hidden p-6 sm:p-8 lg:min-h-[24rem]">
-            <div className="relative z-10 max-w-3xl">
-              <h1 className="os-section-title text-4xl font-bold tracking-normal text-balance sm:text-5xl">
-                Good {dayPart}, Justin.
-              </h1>
-              <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--muted)] sm:text-lg">
-                {dayPartBriefs[dayPart]}
-              </p>
-
-              <div className="mt-10 lg:max-w-[58%]">
-                <p className="os-label">Today&apos;s focus</p>
-                <div className="mt-4 grid gap-3">
-                  {(aiBrief?.focus_items?.length ? aiBrief.focus_items : briefItems).slice(0, 3).map((item) => (
-                    <div key={item.label} className="flex items-center gap-3">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--gradient-citrus)] text-white">
-                        <CheckCircle2 size={15} />
-                      </span>
-                      <span className="line-clamp-2 text-[13px] font-semibold leading-5 sm:text-sm">
-                        {item.value}
-                      </span>
-                    </div>
-                  ))}
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-4">
+        <section className="grid gap-4 xl:grid-cols-[1fr_21rem]">
+          <div className="os-card p-4 sm:p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-[var(--accent)]">
+                  <span>Good {dayPart}, Justin</span>
+                  <span className="h-1 w-1 rounded-full bg-[var(--muted-soft)]" />
+                  <span className="text-[var(--muted)]">
+                    {dataLoading ? "Refreshing..." : `Refreshed ${formatTime(lastRefresh)}`}
+                  </span>
                 </div>
+                <h1 className="os-section-title mt-2 text-2xl font-bold tracking-normal sm:text-3xl">
+                  Today&apos;s command center
+                </h1>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">
+                  {dayPartBriefs[dayPart]}
+                </p>
               </div>
-            </div>
-            <div className="pointer-events-none absolute bottom-0 right-0 hidden h-72 w-2/3 overflow-hidden rounded-br-[1.75rem] lg:block">
-              <div className="absolute inset-x-0 bottom-0 h-56 bg-[linear-gradient(160deg,rgba(255,176,43,0.04),rgba(244,126,22,0.42)_55%,rgba(232,75,27,0.9))]" />
-              <div className="absolute bottom-9 right-28 h-36 w-36 rounded-full bg-[radial-gradient(circle_at_36%_28%,#fff7e9_0_7%,#ffb02b_8%,#f47e16_58%,#e84b1b_100%)] shadow-[0_24px_70px_rgba(232,75,27,0.23)]">
-                <div className="absolute inset-6 rounded-full border-[10px] border-white/80 bg-[url('/brand/citrus-logo-mark.svg')] bg-contain bg-center bg-no-repeat" />
-              </div>
-              <div className="absolute bottom-0 left-0 h-28 w-full rounded-t-[60%] bg-[#ffb55d]/32" />
-              <div className="absolute bottom-0 left-24 h-36 w-full rounded-t-[70%] bg-[#ff8b2c]/40" />
-              <div className="absolute bottom-0 left-52 h-28 w-full rounded-t-[60%] bg-[#f7671b]/54" />
-            </div>
-          </div>
-
-          <aside className="os-card p-6">
-            <p className="os-label">Daily intent</p>
-            <p className="mt-6 text-4xl leading-none text-[var(--accent)]">&ldquo;</p>
-            <p className="mt-1 text-2xl font-semibold leading-snug text-[var(--foreground)]">
-              Small daily improvements lead to stunning results.
-            </p>
-            <p className="mt-4 text-sm text-[var(--muted)]">Robin Sharma</p>
-            <button className="os-secondary-button mt-8 h-12 px-5 text-sm font-semibold" type="button">
-              Set New Intent
-            </button>
-            <div className="mt-6 rounded-2xl border border-[var(--line)] bg-white/58 p-4 text-sm text-[var(--muted)]">
-              <div className="flex items-center gap-2">
-                <RefreshCcw size={15} className={dataLoading ? "animate-spin text-[var(--accent)]" : "text-[var(--accent)]"} />
-                <span>{dataLoading ? "Refreshing..." : `Refreshed ${formatTime(lastRefresh)}`}</span>
-              </div>
-            </div>
-          </aside>
-        </section>
-
-        <section className="grid gap-5 xl:grid-cols-[1.4fr_0.8fr]">
-          <div className="os-card p-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
-                  <Bot size={18} />
-                  AI Brief
-                </div>
-                <h2 className="mt-2 text-2xl font-semibold">What matters for the rest of the day</h2>
-              </div>
-              <div className="flex flex-wrap gap-2">
-              <button
-                className="os-primary-button inline-flex h-12 items-center justify-center gap-2 px-5 text-sm font-semibold hover:opacity-90 disabled:cursor-wait disabled:opacity-70"
-                disabled={briefLoading}
-                onClick={generateAiBrief}
-                type="button"
-              >
-                <Sparkles size={16} />
-                {briefLoading ? "Generating..." : "Generate brief"}
-              </button>
-              <button
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white px-5 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--panel-strong)]"
-                disabled={syncing}
-                onClick={syncDailyData}
-                type="button"
-              >
-                <RefreshCcw size={16} />
-                {syncing ? "Syncing..." : "Sync day"}
-              </button>
-              </div>
-            </div>
-
-            <div className="mt-5 grid gap-3 md:grid-cols-3">
-              {(aiBrief?.focus_items?.length ? aiBrief.focus_items : briefItems).slice(0, 3).map((item) => (
-                <div key={item.label} className={`rounded-[1.5rem] border p-4 ${toneClass(item.tone)}`}>
-                  <p className="text-sm font-medium">{item.label}</p>
-                  <p className="mt-2 text-xl font-semibold">{item.value}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="os-card-soft mt-5 p-4">
-              <p className="text-sm font-medium text-[var(--muted)]">Recommended next action</p>
-              <p className="mt-2 text-lg font-semibold">
-                {aiBrief?.headline
-                  ? aiBrief.headline
-                  : liveInboxItems[0]?.subject
-                  ? `Start with "${liveInboxItems[0].subject}", then review the next calendar commitment.`
-                  : "Confirm the Oak Ridge inspection window before the 3 PM deadline, then review the Maple Ave term sheet."}
-              </p>
-              {aiBrief?.narrative ? (
-                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{aiBrief.narrative}</p>
-              ) : null}
-              {syncMessage ? <p className="mt-2 text-sm text-[var(--muted)]">{syncMessage}</p> : null}
-              {briefError ? <p className="mt-2 text-sm text-red-700">{briefError}</p> : null}
-            </div>
-
-            {aiBrief ? (
-              <div className="mt-4 grid gap-3 lg:grid-cols-3">
-                <AiSuggestionList
-                  title="Tasks"
-                  items={aiBrief.suggested_tasks.map((task) => ({
-                    title: task.title,
-                    body: `${task.priority} priority - ${task.reason}`,
-                  }))}
-                />
-                <AiSuggestionList
-                  title="Reply drafts"
-                  items={aiBrief.reply_drafts.map((draft) => ({
-                    title: draft.subject,
-                    body: `${draft.recipient}: ${draft.draft}`,
-                  }))}
-                />
-                <AiSuggestionList
-                  title="Project updates"
-                  items={aiBrief.project_updates.map((update) => ({
-                    title: update.project,
-                    body: `${update.update} Next: ${update.nextAction}`,
-                  }))}
-                />
-              </div>
-            ) : null}
-          </div>
-
-          <div className="os-card p-6">
-            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
-              <DatabaseZap size={18} />
-              Data connections
-            </div>
-            <div className="mt-4 grid gap-3">
-              {[
-                ["Gmail", "Live", Mail],
-                ["Google Calendar", "Live", CalendarDays],
-                ["Market data", "Live", Gauge],
-                ["Project memory", "Live", Bell],
-              ].map(([label, status, Icon]) => (
-                <div
-                  key={label as string}
-                  className="flex items-center justify-between rounded-full border border-[var(--line)] bg-[var(--panel-strong)] px-4 py-3"
+              <div className="flex shrink-0 flex-wrap gap-2">
+                <button
+                  className="os-primary-button inline-flex h-10 items-center justify-center gap-2 px-4 text-sm font-semibold hover:opacity-90 disabled:cursor-wait disabled:opacity-70"
+                  disabled={briefLoading}
+                  onClick={generateAiBrief}
+                  type="button"
                 >
-                  <span className="flex items-center gap-2 font-medium">
-                    <Icon size={17} />
-                    {label as string}
-                  </span>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs text-[var(--muted)]">
-                    {status as string}
-                  </span>
+                  <Sparkles size={15} />
+                  {briefLoading ? "Generating..." : "Brief"}
+                </button>
+                <button
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-[var(--line)] bg-white px-4 text-sm font-semibold text-[var(--accent)] hover:bg-[var(--panel-strong)]"
+                  disabled={syncing}
+                  onClick={syncDailyData}
+                  type="button"
+                >
+                  <RefreshCcw size={15} />
+                  {syncing ? "Syncing..." : "Sync"}
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2 xl:grid-cols-4">
+              {dashboardMetrics.map((metric) => (
+                <div key={metric.label} className="rounded-xl border border-[var(--line)] bg-white/58 p-2.5 sm:p-3">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[var(--muted)]">
+                    <metric.icon size={14} className="text-[var(--accent)]" />
+                    {metric.label}
+                  </div>
+                  <div className="mt-2">
+                    <p className="text-2xl font-semibold leading-none">{metric.value}</p>
+                    <p className="mt-1 hidden text-xs leading-4 text-[var(--muted)] sm:line-clamp-1">{metric.detail}</p>
+                  </div>
                 </div>
               ))}
             </div>
-            <div className="mt-4">
-              <IntegrationStatus onSynced={loadLiveData} />
+
+            <div className="mt-3 grid gap-1.5 md:grid-cols-3">
+              {(aiBrief?.focus_items?.length ? aiBrief.focus_items : briefItems).slice(0, 3).map((item) => (
+                <div
+                  key={item.label}
+                  className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 md:block md:py-2.5 ${toneClass(item.tone)}`}
+                >
+                  <p className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.08em]">{item.label}</p>
+                  <p className="line-clamp-1 text-right text-sm font-semibold leading-5 md:mt-1 md:line-clamp-2 md:text-left">{item.value}</p>
+                </div>
+              ))}
             </div>
           </div>
-        </section>
 
-        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-          {dashboardMetrics.map((metric) => (
-            <div key={metric.label} className="os-card p-5">
-              <div className="os-icon-bubble flex h-12 w-12 items-center justify-center">
-                <metric.icon size={20} />
-              </div>
-              <p className="mt-4 text-sm text-[var(--muted)]">{metric.label}</p>
-              <p className="mt-1 text-3xl font-semibold">{metric.value}</p>
-              <p className="mt-1 text-sm text-[var(--muted)]">{metric.detail}</p>
-            </div>
-          ))}
+          <QuickCaptureCard />
         </section>
 
         <section className="grid gap-4 xl:grid-cols-3">
@@ -579,11 +465,98 @@ export function DashboardClient({ initialTimestamp }: DashboardClientProps) {
             </div>
           </Panel>
         </section>
-        <section className="grid gap-5 lg:grid-cols-[0.9fr_1fr_0.7fr]">
-          <ProgressCard />
-          <QuickCaptureCard />
-          <EnergyCard />
+
+        <section className="grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">
+          <div className="os-card p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
+                  <Bot size={18} />
+                  AI Brief
+                </div>
+                <h2 className="mt-1 text-xl font-semibold">Next best action</h2>
+              </div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white px-3 py-1 text-xs font-semibold text-[var(--muted)]">
+                <RefreshCcw size={13} className={dataLoading ? "animate-spin text-[var(--accent)]" : "text-[var(--accent)]"} />
+                {formatTime(lastRefresh)}
+              </span>
+            </div>
+
+            <div className="os-card-soft mt-4 p-4">
+              <p className="text-sm font-medium text-[var(--muted)]">Recommendation</p>
+              <p className="mt-1 text-base font-semibold leading-6">
+                {aiBrief?.headline
+                  ? aiBrief.headline
+                  : liveInboxItems[0]?.subject
+                  ? `Start with "${liveInboxItems[0].subject}", then review the next calendar commitment.`
+                  : "Confirm the Oak Ridge inspection window before the 3 PM deadline, then review the Maple Ave term sheet."}
+              </p>
+              {aiBrief?.narrative ? (
+                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{aiBrief.narrative}</p>
+              ) : null}
+              {syncMessage ? <p className="mt-2 text-sm text-[var(--muted)]">{syncMessage}</p> : null}
+              {briefError ? <p className="mt-2 text-sm text-red-700">{briefError}</p> : null}
+            </div>
+
+            {aiBrief ? (
+              <div className="mt-3 grid gap-3 lg:grid-cols-3">
+                <AiSuggestionList
+                  title="Tasks"
+                  items={aiBrief.suggested_tasks.map((task) => ({
+                    title: task.title,
+                    body: `${task.priority} priority - ${task.reason}`,
+                  }))}
+                />
+                <AiSuggestionList
+                  title="Reply drafts"
+                  items={aiBrief.reply_drafts.map((draft) => ({
+                    title: draft.subject,
+                    body: `${draft.recipient}: ${draft.draft}`,
+                  }))}
+                />
+                <AiSuggestionList
+                  title="Project updates"
+                  items={aiBrief.project_updates.map((update) => ({
+                    title: update.project,
+                    body: `${update.update} Next: ${update.nextAction}`,
+                  }))}
+                />
+              </div>
+            ) : null}
+          </div>
+
+          <div className="os-card p-4 sm:p-5">
+            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
+              <DatabaseZap size={18} />
+              Data connections
+            </div>
+            <div className="mt-3 grid gap-2">
+              {[
+                ["Gmail", "Live", Mail],
+                ["Google Calendar", "Live", CalendarDays],
+                ["Market data", "Live", Gauge],
+                ["Project memory", "Live", Bell],
+              ].map(([label, status, Icon]) => (
+                <div
+                  key={label as string}
+                  className="flex items-center justify-between rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] px-3 py-2.5"
+                >
+                  <span className="flex items-center gap-2 font-medium">
+                    <Icon size={17} />
+                    {label as string}
+                  </span>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs text-[var(--muted)]">
+                    {status as string}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3">
+              <IntegrationStatus onSynced={loadLiveData} />
+            </div>
+          </div>
         </section>
+
       </div>
     </AppChrome>
   );
@@ -597,8 +570,8 @@ type PanelProps = {
 
 function Panel({ title, icon: Icon, children }: PanelProps) {
   return (
-    <section className="os-card p-5">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="os-card p-4">
+      <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
           <Icon size={18} />
           {title}
@@ -610,70 +583,27 @@ function Panel({ title, icon: Icon, children }: PanelProps) {
   );
 }
 
-function ProgressCard() {
-  return (
-    <section className="os-card p-6">
-      <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
-        <Target size={18} />
-        Task Progress
-      </div>
-      <div className="mt-6 flex items-center gap-6">
-        <div className="relative flex h-36 w-36 shrink-0 items-center justify-center rounded-full bg-[conic-gradient(var(--accent)_0_72%,rgba(244,126,22,0.16)_72%_100%)]">
-          <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-[var(--surface)]">
-            <span className="text-3xl font-semibold">72%</span>
-            <span className="text-xs text-[var(--muted)]">Completed</span>
-          </div>
-        </div>
-        <div className="grid gap-3 text-sm">
-          <p><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[var(--secondary)]" />Completed 18</p>
-          <p><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[var(--accent)]" />In Progress 6</p>
-          <p><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[var(--surface-warm)]" />Pending 11</p>
-        </div>
-      </div>
-      <p className="mt-6 text-sm text-[var(--muted)]">35 tasks total <span className="ml-4 font-semibold text-[var(--secondary)]">+12% from last week</span></p>
-    </section>
-  );
-}
-
 function QuickCaptureCard() {
   return (
-    <section className="os-card p-6">
+    <section className="os-card p-4 sm:p-5">
       <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
         <Sparkles size={18} />
         Quick Capture
       </div>
-      <div className="mt-5 flex gap-2">
-        <input className="os-input h-12 min-w-0 flex-1 px-4 text-sm" placeholder="Capture a task, note, thought, or event..." />
-        <button className="os-primary-button flex h-12 w-12 shrink-0 items-center justify-center" type="button">
+      <div className="mt-3 flex gap-2">
+        <input className="os-input h-10 min-w-0 flex-1 px-3 text-sm" placeholder="Capture task, note, or event..." />
+        <button className="os-primary-button flex h-10 w-10 shrink-0 items-center justify-center" type="button">
           <Sparkles size={18} />
         </button>
       </div>
-      <div className="mt-5 grid gap-3 text-sm">
+      <div className="mt-3 hidden gap-2 text-sm sm:grid">
         {["Review ledger pacing", "Call contractor about photos", "Draft project update"].map((note, index) => (
           <div className="flex justify-between gap-3" key={note}>
-            <span>{note}</span>
+            <span className="min-w-0 truncate">{note}</span>
             <span className="text-[var(--muted)]">{index === 0 ? "Today" : "Soon"}</span>
           </div>
         ))}
       </div>
-    </section>
-  );
-}
-
-function EnergyCard() {
-  return (
-    <section className="os-card p-6">
-      <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
-        <Activity size={18} />
-        Energy
-      </div>
-      <div className="mx-auto mt-6 flex h-36 w-36 items-center justify-center rounded-full bg-[conic-gradient(var(--accent)_0_82%,rgba(244,126,22,0.14)_82%_100%)]">
-        <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-[var(--surface)]">
-          <span className="text-4xl font-semibold">82</span>
-          <span className="text-sm text-[var(--muted)]">Great</span>
-        </div>
-      </div>
-      <p className="mt-5 text-center text-sm text-[var(--muted)]">Energy trend <span className="font-semibold text-[var(--secondary)]">+12% from yesterday</span></p>
     </section>
   );
 }

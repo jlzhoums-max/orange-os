@@ -81,15 +81,15 @@ export function IntegrationStatus({ onSynced }: IntegrationStatusProps) {
   }
 
   return (
-    <div className="rounded-[1.5rem] border border-[var(--line)] bg-[var(--panel-strong)] p-4">
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-strong)] p-3">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[var(--accent)]">
-            <Mail size={18} />
+        <div className="flex min-w-0 items-start gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[var(--accent)]">
+            <Mail size={16} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="font-semibold">Google workspace</p>
-            <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+            <p className="mt-1 line-clamp-2 text-sm leading-5 text-[var(--muted)]">
               {connected
                 ? status?.google.accountEmail ?? "Connected"
                 : status?.google.reason ?? "Connect Google to sync Gmail and Calendar."}
@@ -103,7 +103,7 @@ export function IntegrationStatus({ onSynced }: IntegrationStatusProps) {
         )}
       </div>
       <button
-        className="mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-[var(--muted)]"
+        className="mt-3 inline-flex h-8 items-center justify-center gap-2 rounded-full bg-white px-3 text-xs font-semibold text-[var(--muted)]"
         onClick={loadStatus}
         type="button"
       >
@@ -112,7 +112,7 @@ export function IntegrationStatus({ onSynced }: IntegrationStatusProps) {
       </button>
       {connected ? (
         <button
-          className="ml-2 mt-3 inline-flex h-9 items-center justify-center gap-2 rounded-full bg-[var(--secondary-container)] px-4 text-sm font-semibold text-[var(--secondary)]"
+          className="ml-2 mt-3 inline-flex h-8 items-center justify-center gap-2 rounded-full bg-[var(--secondary-container)] px-3 text-xs font-semibold text-[var(--secondary)]"
           disabled={syncing}
           onClick={syncWorkspace}
           type="button"
@@ -121,7 +121,7 @@ export function IntegrationStatus({ onSynced }: IntegrationStatusProps) {
           {syncing ? "Syncing..." : "Sync now"}
         </button>
       ) : null}
-      {message ? <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{message}</p> : null}
+      {message ? <p className="mt-2 text-sm leading-5 text-[var(--muted)]">{message}</p> : null}
     </div>
   );
 }

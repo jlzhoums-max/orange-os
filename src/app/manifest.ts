@@ -28,6 +28,13 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       {
+        name: "To-do",
+        short_name: "To-do",
+        description: "Open the To-do tool.",
+        url: "/todo",
+        icons: [{ src: "/brand/citrus-logo-mark-512.png", sizes: "512x512" }],
+      },
+      {
         name: "Ledger",
         short_name: "Ledger",
         description: "Open The Ledger tool.",

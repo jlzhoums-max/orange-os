@@ -12,6 +12,7 @@ import {
   DatabaseZap,
   Home,
   LayoutDashboard,
+  ListTodo,
   LogOut,
   Mail,
   Menu,
@@ -35,7 +36,7 @@ type DockItem = {
 };
 
 type AppChromeProps = {
-  active?: "Home" | "Tools";
+  active?: "Home" | "Mail" | "Tools";
   children: React.ReactNode;
 };
 
@@ -62,44 +63,44 @@ export function AppTopbar() {
   }).format(new Date());
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[var(--background)]/82 px-4 py-3 backdrop-blur-xl lg:px-6">
-      <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4">
+    <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[var(--background)]/88 px-3 py-2 backdrop-blur-xl lg:px-5">
+      <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-3">
         <button className="text-[var(--accent)] lg:hidden" aria-label="Open menu" type="button">
-          <Menu size={25} />
+          <Menu size={22} />
         </button>
 
-        <label className="hidden h-12 w-full max-w-md items-center gap-3 rounded-2xl border border-[var(--line)] bg-[rgba(255,253,248,0.78)] px-4 shadow-[0_8px_22px_rgba(110,56,13,0.05)] lg:flex">
-          <Search size={20} className="text-[var(--muted)]" />
+        <label className="hidden h-10 w-full max-w-sm items-center gap-2 rounded-xl border border-[var(--line)] bg-[rgba(255,253,248,0.78)] px-3 shadow-[0_8px_22px_rgba(110,56,13,0.05)] lg:flex">
+          <Search size={17} className="text-[var(--muted)]" />
           <input
             className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--muted-soft)]"
             placeholder="Search anything..."
             type="search"
           />
-          <span className="inline-flex items-center gap-1 rounded-lg border border-[var(--line)] bg-white/70 px-2 py-1 font-mono text-xs text-[var(--muted)]">
+          <span className="inline-flex items-center gap-1 rounded-md border border-[var(--line)] bg-white/70 px-1.5 py-0.5 font-mono text-[11px] text-[var(--muted)]">
             <Command size={12} /> K
           </span>
         </label>
 
-        <BrandLogo className="h-10 w-10 lg:hidden" />
+        <BrandLogo className="h-8 w-8 lg:hidden" />
 
-        <div className="flex items-center gap-3 text-sm text-[var(--foreground)]">
+        <div className="flex items-center gap-2 text-sm text-[var(--foreground)]">
           <div className="hidden items-center gap-2 md:flex">
-            <CalendarDays size={19} className="text-[var(--muted)]" />
+            <CalendarDays size={17} className="text-[var(--muted)]" />
             <span>{date}</span>
           </div>
           <button
-            className="relative flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-[rgba(255,253,248,0.78)] text-[var(--foreground)]"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[rgba(255,253,248,0.78)] text-[var(--foreground)]"
             aria-label="Notifications"
             type="button"
           >
-            <Bell size={19} />
-            <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-[var(--accent-hot)] ring-2 ring-[var(--surface)]" />
+            <Bell size={17} />
+            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[var(--accent-hot)] ring-2 ring-[var(--surface)]" />
           </button>
           <Link
-            className="hidden items-center gap-3 rounded-full border border-[var(--line)] bg-[rgba(255,253,248,0.78)] py-1.5 pl-1.5 pr-3 md:flex"
+            className="hidden items-center gap-2 rounded-full border border-[var(--line)] bg-[rgba(255,253,248,0.78)] py-1 pl-1 pr-2.5 md:flex"
             href="/"
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--secondary-container)] text-sm font-bold text-[var(--secondary)]">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--secondary-container)] text-xs font-bold text-[var(--secondary)]">
               J
             </span>
             <span className="font-semibold">Justin</span>
@@ -111,44 +112,45 @@ export function AppTopbar() {
   );
 }
 
-function Sidebar({ active }: { active: "Home" | "Tools" }) {
+function Sidebar({ active }: { active: "Home" | "Mail" | "Tools" }) {
   const pathname = usePathname();
   const primary = [
     { label: "Today", href: "/", icon: LayoutDashboard, active: active === "Home" && pathname === "/" },
     { label: "Calendar", icon: CalendarDays },
-    { label: "Inbox", icon: Mail },
+    { label: "Inbox", href: "/email", icon: Mail, active: active === "Mail" || pathname === "/email" },
     { label: "AI Brief", icon: Sparkles },
   ];
   const tools = [
+    { label: "To-do", href: "/todo", icon: ListTodo },
     { label: "Real Estate", href: "/real-estate", icon: Home },
     { label: "Ledger", href: "/ledger", icon: WalletCards },
     { label: "Future Tools", icon: DatabaseZap },
   ];
 
   return (
-    <aside className="sticky top-0 hidden h-screen border-r border-[var(--line)] bg-[rgba(255,244,230,0.52)] p-5 backdrop-blur-xl lg:flex lg:flex-col">
+    <aside className="sticky top-0 hidden h-screen border-r border-[var(--line)] bg-[rgba(255,244,230,0.52)] p-4 backdrop-blur-xl lg:flex lg:flex-col">
       <Link className="flex items-center gap-3" href="/">
-        <BrandLogo className="h-11 w-11" />
+        <BrandLogo className="h-9 w-9" />
         <div>
           <p className="font-bold leading-tight">Orange OS</p>
-          <p className="text-xs text-[var(--muted)]">Personal cockpit</p>
+          <p className="text-xs text-[var(--muted)]">Daily tools</p>
         </div>
       </Link>
 
-      <button className="os-primary-button mt-7 flex h-12 items-center justify-center gap-2 px-4 text-sm font-semibold" type="button">
+      <button className="os-primary-button mt-5 flex h-10 items-center justify-center gap-2 px-3 text-sm font-semibold" type="button">
         <Plus size={17} />
         Quick capture
       </button>
 
-      <nav className="mt-7 grid gap-1" aria-label="Desktop navigation">
+      <nav className="mt-5 grid gap-1" aria-label="Desktop navigation">
         {primary.map((item) => (
           <SidebarLink key={item.label} {...item} />
         ))}
       </nav>
 
-      <div className="mt-7">
+      <div className="mt-5">
         <p className="os-label px-3">Tools</p>
-        <nav className="mt-3 grid gap-1" aria-label="Tool navigation">
+        <nav className="mt-2 grid gap-1" aria-label="Tool navigation">
           {tools.map((item) => (
             <SidebarLink key={item.label} {...item} active={Boolean(item.href && pathname === item.href)} />
           ))}
@@ -158,7 +160,7 @@ function Sidebar({ active }: { active: "Home" | "Tools" }) {
       <div className="mt-auto grid gap-2">
         <SidebarLink label="Settings" icon={Settings} />
         <Link
-          className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-[var(--muted)] hover:bg-white/62 hover:text-[var(--accent)]"
+          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-[var(--muted)] hover:bg-white/62 hover:text-[var(--accent)]"
           href="/auth/signout"
         >
           <LogOut size={18} />
@@ -180,7 +182,7 @@ function SidebarLink({
   href?: string;
   active?: boolean;
 }) {
-  const className = `relative flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold transition ${
+  const className = `relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
     active
       ? "bg-white text-[var(--accent)] shadow-[0_9px_26px_rgba(110,56,13,0.07)]"
       : "text-[var(--muted)] hover:bg-white/62 hover:text-[var(--accent)]"
@@ -208,7 +210,7 @@ function SidebarLink({
   );
 }
 
-export function BottomDock({ active = "Home" }: { active?: "Home" | "Tools" }) {
+export function BottomDock({ active = "Home" }: { active?: "Home" | "Mail" | "Tools" }) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const items: DockItem[] = [
     { label: "Home", icon: LayoutDashboard, active: active === "Home", href: "/" },
@@ -216,7 +218,7 @@ export function BottomDock({ active = "Home" }: { active?: "Home" | "Tools" }) {
       label: "Search",
       icon: Search,
       options: [
-        { label: "Inbox", icon: Mail },
+        { label: "Inbox", href: "/email", icon: Mail },
         { label: "Calendar", icon: CalendarDays },
       ],
     },
@@ -233,6 +235,7 @@ export function BottomDock({ active = "Home" }: { active?: "Home" | "Tools" }) {
       icon: Wrench,
       active: active === "Tools",
       options: [
+        { label: "To-do", href: "/todo", icon: ListTodo },
         { label: "Real estate", href: "/real-estate", icon: Home },
         { label: "Ledger", href: "/ledger", icon: WalletCards },
         { label: "Coming soon", icon: DatabaseZap },
@@ -251,7 +254,7 @@ export function BottomDock({ active = "Home" }: { active?: "Home" | "Tools" }) {
   return (
     <nav
       aria-label="Primary"
-      className="fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[var(--line)] bg-[rgba(255,253,248,0.9)] px-3 py-3 shadow-[var(--shadow-soft)] backdrop-blur-xl lg:hidden"
+      className="fixed bottom-3 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-[var(--line)] bg-[rgba(255,253,248,0.92)] px-2 py-2 shadow-[var(--shadow-soft)] backdrop-blur-xl lg:hidden"
     >
       {items.map((item) => (
         <DockButton
@@ -277,7 +280,7 @@ function DockButton({
   const Icon = item.icon;
   const hasOptions = Boolean(item.options?.length);
   const isActive = Boolean(item.active);
-  const buttonClass = `flex h-11 w-11 items-center justify-center rounded-full transition ${
+  const buttonClass = `flex h-10 w-10 items-center justify-center rounded-full transition ${
     isActive
       ? "bg-[var(--gradient-citrus)] text-white shadow-[0_10px_20px_rgba(232,75,27,0.2)]"
       : open
@@ -301,7 +304,7 @@ function DockButton({
     >
       {item.href && !hasOptions ? (
         <Link aria-label={item.label} className={buttonClass} href={item.href}>
-          <Icon size={21} />
+          <Icon size={19} />
         </Link>
       ) : (
         <button
@@ -315,7 +318,7 @@ function DockButton({
           }}
           type="button"
         >
-          <Icon size={21} />
+          <Icon size={19} />
         </button>
       )}
 
