@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasSupabasePublicEnv } from "@/lib/env";
-import { googleFetch } from "@/lib/google/server";
+import { googleErrorPayload, googleFetch } from "@/lib/google/server";
 import type { Json } from "@/lib/database.types";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -97,10 +97,8 @@ export async function POST(request: Request) {
       },
     );
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Google Calendar event could not be created." },
-      { status: 502 },
-    );
+    const payload = googleErrorPayload(error);
+    return NextResponse.json(payload.body, { status: payload.status });
   }
 
   const admin = getSupabaseAdmin();

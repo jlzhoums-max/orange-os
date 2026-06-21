@@ -23,6 +23,13 @@ export async function GET(request: Request) {
         process.env.SUPABASE_SECRET_KEY
       ) {
         const admin = getSupabaseAdmin();
+        const { data: existingAccount } = await admin
+          .from("connected_accounts")
+          .select("refresh_token")
+          .eq("user_id", user.id)
+          .eq("provider", "google")
+          .maybeSingle();
+
         await admin.from("connected_accounts").upsert(
           {
             user_id: user.id,
@@ -30,7 +37,7 @@ export async function GET(request: Request) {
             account_email: user.email ?? null,
             scopes: googleIntegrationScopes,
             access_token: session.provider_token ?? null,
-            refresh_token: session.provider_refresh_token ?? null,
+            refresh_token: session.provider_refresh_token ?? existingAccount?.refresh_token ?? null,
             expires_at: session.expires_at
               ? new Date(session.expires_at * 1000).toISOString()
               : null,

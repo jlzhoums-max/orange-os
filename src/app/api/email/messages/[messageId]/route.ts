@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasSupabasePublicEnv } from "@/lib/env";
-import { getGoogleAccessToken, googleFetch } from "@/lib/google/server";
+import { getGoogleAccessToken, googleErrorPayload, googleFetch } from "@/lib/google/server";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -166,10 +166,8 @@ export async function PATCH(request: Request, { params }: Params) {
       nextLabels = trashed.labelIds ?? ["TRASH", ...removeLabels(nextLabels, ["INBOX", "UNREAD", "TRASH"])];
     }
   } catch (actionError) {
-    return NextResponse.json(
-      { error: actionError instanceof Error ? actionError.message : "Gmail action failed." },
-      { status: 502 },
-    );
+    const payload = googleErrorPayload(actionError);
+    return NextResponse.json(payload.body, { status: payload.status });
   }
 
   const { error: updateError } = await admin

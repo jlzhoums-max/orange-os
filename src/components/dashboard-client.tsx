@@ -95,6 +95,15 @@ function varianceLabel(value: number) {
   return `${formatMoneyCompact(Math.abs(value))} ${value >= 0 ? "under budget" : "over budget"}`;
 }
 
+async function responseError(response: Response, fallback: string) {
+  try {
+    const payload = (await response.json()) as { error?: string };
+    return payload.error ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function initialsFor(name: string) {
   return name
     .split(/\s+/)
@@ -293,8 +302,16 @@ export function DashboardClient({ initialTimestamp }: DashboardClientProps) {
         fetch("/api/market/quotes?symbols=SPY,QQQ,VNQ"),
       ]);
 
-      if (!gmail.ok || !calendar.ok || !market.ok) {
-        throw new Error("Sync could not finish. Try reconnecting Google if this repeats.");
+      if (!gmail.ok) {
+        throw new Error(await responseError(gmail, "Gmail sync could not finish."));
+      }
+
+      if (!calendar.ok) {
+        throw new Error(await responseError(calendar, "Calendar sync could not finish."));
+      }
+
+      if (!market.ok) {
+        throw new Error(await responseError(market, "Market sync could not finish."));
       }
 
       const [gmailData, calendarData] = (await Promise.all([

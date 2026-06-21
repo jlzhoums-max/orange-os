@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { hasSupabasePublicEnv } from "@/lib/env";
 import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
+import { googleErrorPayload } from "@/lib/google/server";
 import { syncGmailForUser } from "@/lib/google/sync";
 
 export async function POST() {
@@ -17,7 +18,12 @@ export async function POST() {
   }
 
   const userId = user.id;
-  const synced = await syncGmailForUser(userId);
+  try {
+    const synced = await syncGmailForUser(userId);
 
-  return NextResponse.json({ synced });
+    return NextResponse.json({ synced });
+  } catch (error) {
+    const payload = googleErrorPayload(error);
+    return NextResponse.json(payload.body, { status: payload.status });
+  }
 }
